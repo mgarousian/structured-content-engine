@@ -17,6 +17,7 @@ export default function Page() {
   const addBlock = useEditorStore((s) => s.addBlock);
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
+  const deleteBlock = useEditorStore((s) => s.deleteBlock);
   const availableBlocks = listBlocks().filter((block) => block.type === 'heading' || block.type === 'paragraph');
 
   useEffect(() => {
@@ -58,34 +59,53 @@ export default function Page() {
       </div>
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ flex: 1 }}>
-          {blocks.map((b) => {
-            const def = getBlock(b.type);
-            if (!def || !def.renderer) {
+          {blocks.length === 0 ? (
+            <div style={{ padding: 24, border: '1px solid #eee', borderRadius: 8, color: '#555' }}>
+              هنوز بلوکی به این صفحه اضافه نشده است.
+            </div>
+          ) : (
+            blocks.map((b) => {
+              const def = getBlock(b.type);
+              if (!def || !def.renderer) {
+                return (
+                  <div key={b.id} style={{ padding: 12, border: '1px solid #eee', marginBottom: 12 }}>
+                    بلاک ناشناخته: {b.type}
+                  </div>
+                );
+              }
+
+              const isSelected = selectedBlockId === b.id;
+
               return (
-                <div key={b.id} style={{ padding: 12, border: '1px solid #eee', marginBottom: 12 }}>
-                  بلاک ناشناخته: {b.type}
+                <div
+                  key={b.id}
+                  onClick={() => selectBlock(b.id)}
+                  style={{
+                    padding: 12,
+                    border: isSelected ? '2px solid #3b82f6' : '1px solid #eee',
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <strong>{def.label}</strong>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteBlock(b.id);
+                      }}
+                    >
+                      حذف
+                    </Button>
+                  </div>
+                  {def.renderer(b.data)}
                 </div>
               );
-            }
-
-            const isSelected = selectedBlockId === b.id;
-
-            return (
-              <div
-                key={b.id}
-                onClick={() => selectBlock(b.id)}
-                style={{
-                  padding: 12,
-                  border: isSelected ? '2px solid #3b82f6' : '1px solid #eee',
-                  borderRadius: 8,
-                  marginBottom: 12,
-                  cursor: 'pointer',
-                }}
-              >
-                {def.renderer(b.data)}
-              </div>
-            );
-          })}
+            })
+          )}
         </div>
 
         <aside style={{ width: 340, padding: 12, borderRight: '1px solid #eee' }}>

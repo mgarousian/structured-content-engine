@@ -9,6 +9,7 @@ type EditorStore = {
   selectBlock: (id: string | null) => void;
   updateBlock: (id: string, data: any) => void;
   addBlock: (type: string, data: any) => void;
+  deleteBlock: (id: string) => void;
   setPage: (p: Page) => void;
 };
 
@@ -95,6 +96,18 @@ export const useEditorStore = create<EditorStore>((set) => ({
       };
       savePageToStorage(nextPage);
       return { page: nextPage, selectedBlockId: newBlock.id };
+    }),
+  deleteBlock: (id) =>
+    set((state) => {
+      const nextPage: Page = {
+        ...state.page,
+        blocks: state.page.blocks.filter((b: BlockInstance) => b.id !== id),
+      };
+      savePageToStorage(nextPage);
+      return {
+        page: nextPage,
+        selectedBlockId: state.selectedBlockId === id ? null : state.selectedBlockId,
+      };
     }),
   setPage: (p) => {
     savePageToStorage(p);
