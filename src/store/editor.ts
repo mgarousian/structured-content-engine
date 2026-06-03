@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { getDocumentByKey, saveDocumentByKey } from '../core/storage/documentStorage';
 import { ContentDocument, ContentType, ContentStatus, BlockInstance } from '../types/blocks';
 
-let STORAGE_KEY = 'page-builder:mvp:demo';
+let STORAGE_KEY = 'content-engine:doc:blog:demo';
 
 export const setStorageKey = (key: string) => {
   STORAGE_KEY = key;
@@ -72,13 +73,10 @@ const parseStoredPage = (value: string | null): ContentDocument | null => {
   }
 };
 
-const savePageToStorage = (page: ContentDocument) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(page));
-  } catch {
-    // ignore write errors
-  }
+const savePageToStorage = (page: ContentDocument): ContentDocument => {
+  if (typeof window === 'undefined') return page;
+  const storedPage = saveDocumentByKey(STORAGE_KEY, page);
+  return storedPage ?? page;
 };
 
 const createBlockId = () =>
@@ -96,8 +94,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
         ...state.page,
         blocks: state.page.blocks.map((b: BlockInstance) => (b.id === id ? { ...b, data } : b)),
       };
-      savePageToStorage(nextPage);
-      return { page: nextPage };
+      const storedPage = savePageToStorage(nextPage);
+      return { page: storedPage };
     }),
   addBlock: (type, data) =>
     set((state) => {
@@ -110,8 +108,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
         ...state.page,
         blocks: [...state.page.blocks, newBlock],
       };
-      savePageToStorage(nextPage);
-      return { page: nextPage, selectedBlockId: newBlock.id };
+      const storedPage = savePageToStorage(nextPage);
+      return { page: storedPage, selectedBlockId: newBlock.id };
     }),
   addBlockAt: (type, data, index) =>
     set((state) => {
@@ -127,8 +125,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
         ...state.page,
         blocks: nextBlocks,
       };
-      savePageToStorage(nextPage);
-      return { page: nextPage, selectedBlockId: newBlock.id };
+      const storedPage = savePageToStorage(nextPage);
+      return { page: storedPage, selectedBlockId: newBlock.id };
     }),
   deleteBlock: (id) =>
     set((state) => {
@@ -136,9 +134,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
         ...state.page,
         blocks: state.page.blocks.filter((b: BlockInstance) => b.id !== id),
       };
-      savePageToStorage(nextPage);
+      const storedPage = savePageToStorage(nextPage);
       return {
-        page: nextPage,
+        page: storedPage,
         selectedBlockId: state.selectedBlockId === id ? null : state.selectedBlockId,
       };
     }),
@@ -151,8 +149,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
       nextBlocks[idx - 1] = nextBlocks[idx];
       nextBlocks[idx] = tmp;
       const nextPage: ContentDocument = { ...state.page, blocks: nextBlocks };
-      savePageToStorage(nextPage);
-      return { page: nextPage };
+      const storedPage = savePageToStorage(nextPage);
+      return { page: storedPage };
     }),
   moveBlockDown: (id) =>
     set((state) => {
@@ -163,19 +161,18 @@ export const useEditorStore = create<EditorStore>((set) => ({
       nextBlocks[idx + 1] = nextBlocks[idx];
       nextBlocks[idx] = tmp;
       const nextPage: ContentDocument = { ...state.page, blocks: nextBlocks };
-      savePageToStorage(nextPage);
-      return { page: nextPage };
+      const storedPage = savePageToStorage(nextPage);
+      return { page: storedPage };
     }),
   setPage: (p) => {
-    savePageToStorage(p);
-    return set(() => ({ page: p }));
+    const storedPage = savePageToStorage(p);
+    return set(() => ({ page: storedPage }));
   },
 }));
 
 export const loadPageFromStorage = () => {
   if (typeof window === 'undefined') return;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  const page = parseStoredPage(stored);
+  const page = getDocumentByKey(STORAGE_KEY);
   if (page) {
     useEditorStore.getState().setPage(page);
   }

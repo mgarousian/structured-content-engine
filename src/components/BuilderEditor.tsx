@@ -6,6 +6,8 @@ import { getBlock, listBlocks } from '@/src/blocks/registry';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useEditorStore, setStorageKey } from '@/src/store/editor';
+import { getDocumentByKey } from '@/src/core/storage/documentStorage';
+import { getModuleConfig } from '@/src/modules/registry';
 import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
 
 const isValidContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
@@ -60,24 +62,10 @@ export default function BuilderEditor({
     setMounted(true);
     setStorageKey(storageKey);
 
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) {
-      useEditorStore.getState().setPage(initialPage);
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(raw);
-      if (isValidContentDocument(parsed, initialPage.contentType)) {
-        useEditorStore.getState().setPage(parsed);
-      } else {
-        useEditorStore.getState().setPage(initialPage);
-      }
-    } catch {
+    const storedDocument = getDocumentByKey(storageKey);
+    if (storedDocument && isValidContentDocument(storedDocument, initialPage.contentType)) {
+      useEditorStore.getState().setPage(storedDocument);
+    } else {
       useEditorStore.getState().setPage(initialPage);
     }
   }, [storageKey, initialPage]);
@@ -94,10 +82,15 @@ export default function BuilderEditor({
     setPickerOpen(false);
   };
 
+  const moduleConfig = getModuleConfig(page.contentType);
+
   return (
     <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <Link href="/page/demo">
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+        <Link href={moduleConfig.adminPath}>
+          <Button variant="outline">بازگشت به لیست</Button>
+        </Link>
+        <Link href={`/page/${moduleConfig.moduleKey}/${page.id}`}>
           <Button variant="outline">مشاهده پیش‌نمایش</Button>
         </Link>
       </div>

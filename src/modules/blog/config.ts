@@ -33,6 +33,8 @@ const config: ModuleConfig = {
   labelFa: 'پست بلاگ',
   allowedBlocks: ['heading', 'paragraph', 'image'],
   storageKey: 'page-builder:mvp:blog-demo',
+  adminPath: '/admin/blog',
+  adminListLabel: 'لیست پست‌ها',
   defaultDocument,
   createDefaultDocument,
 };

@@ -43,6 +43,8 @@ const config: ModuleConfig = {
   labelFa: 'لندینگ‌پیج',
   allowedBlocks: ['heading', 'paragraph', 'image', 'hero'],
   storageKey: 'page-builder:mvp:landing-demo',
+  adminPath: '/admin/landing',
+  adminListLabel: 'لیست لندینگ‌ها',
   defaultDocument,
   createDefaultDocument,
 };

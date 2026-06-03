@@ -14,6 +14,8 @@ export type ModuleConfig = {
   labelFa: string;
   allowedBlocks: string[];
   storageKey: string;
+  adminPath: string;
+  adminListLabel: string;
   defaultDocument: ContentDocument;
   createDefaultDocument: (id: string) => ContentDocument;
 };
