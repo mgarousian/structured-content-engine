@@ -5,6 +5,10 @@ export type BlockType = string;
 export interface BlockDefinition<Data = any> {
   type: BlockType;
   label: string;
+  persianLabel?: string;
+  description?: string;
+  availableFor?: ContentType[];
+  source?: 'core' | 'custom' | 'thirdParty' | string;
   defaultData: Data;
   renderer?: (data: Data) => ReactNode;
   editor?: (props: { data: Data; onChange: (data: Data) => void }) => ReactNode;

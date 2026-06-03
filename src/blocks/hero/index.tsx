@@ -1,13 +1,17 @@
 import React from 'react';
 import HeroRenderer from './renderer';
 import HeroEditor from './editor';
-import { BlockDefinition } from '../../types/blocks';
+import { BlockDefinition, ContentType } from '../../types/blocks';
 import { registerBlock } from '../registry';
 import type { HeroBlockData } from '../../types/blocks';
 
 const heroBlock: BlockDefinition<HeroBlockData> = {
   type: 'hero',
   label: 'هیرو',
+  persianLabel: 'هیرو',
+  description: 'بخشی با عنوان، زیرعنوان و دکمه فراخوان برای لندینگ پیج می‌سازد.',
+  availableFor: ['landingPage'],
+  source: 'core',
   defaultData: {
     title: 'عنوان اصلی لندینگ',
     subtitle: 'اینجا می‌توانید توضیح کوتاهی درباره ارزش پیشنهادی صفحه بنویسید.',

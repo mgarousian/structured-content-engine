@@ -1,7 +1,7 @@
 import React from 'react';
 import HeadingRenderer from './renderer';
 import HeadingEditor from './editor';
-import { BlockDefinition } from '../../types/blocks';
+import { BlockDefinition, ContentType } from '../../types/blocks';
 import { registerBlock } from '../registry';
 
 type HeadingData = {
@@ -12,6 +12,10 @@ type HeadingData = {
 const headingBlock: BlockDefinition<HeadingData> = {
   type: 'heading',
   label: 'عنوان',
+  persianLabel: 'عنوان',
+  description: 'یک عنوان اصلی برای صفحه یا مقاله ایجاد می‌کند.',
+  availableFor: ['blogPost', 'landingPage'],
+  source: 'core',
   defaultData: {
     text: 'عنوان اصلی صفحه',
     level: 'h1',

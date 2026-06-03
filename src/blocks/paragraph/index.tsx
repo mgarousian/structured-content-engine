@@ -1,7 +1,7 @@
 import React from 'react';
 import ParagraphRenderer from './renderer';
 import ParagraphEditor from './editor';
-import { BlockDefinition } from '../../types/blocks';
+import { BlockDefinition, ContentType } from '../../types/blocks';
 import { registerBlock } from '../registry';
 
 type ParagraphData = {
@@ -11,6 +11,10 @@ type ParagraphData = {
 const paragraphBlock: BlockDefinition<ParagraphData> = {
   type: 'paragraph',
   label: 'پاراگراف',
+  persianLabel: 'پاراگراف',
+  description: 'متنی قابل ویرایش را به صفحه اضافه می‌کند.',
+  availableFor: ['blogPost', 'landingPage'],
+  source: 'core',
   defaultData: {
     text: 'این یک پاراگراف نمونه برای محتوای صفحه است.',
   },
