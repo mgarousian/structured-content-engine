@@ -16,10 +16,13 @@ export interface BlockInstance<Data = any> {
   data: Data;
 }
 
+export type ContentType = 'blogPost' | 'landingPage';
+
 export interface Page {
   id: string;
   slug: string;
   title: string;
+  contentType?: ContentType;
   blocks: BlockInstance[];
   meta?: Record<string, any>;
 }

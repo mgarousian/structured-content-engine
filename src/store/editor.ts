@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { Page, BlockInstance } from '../types/blocks';
 
-const STORAGE_KEY = 'page-builder:mvp:demo';
+let STORAGE_KEY = 'page-builder:mvp:demo';
+
+export const setStorageKey = (key: string) => {
+  STORAGE_KEY = key;
+};
 
 type EditorStore = {
   page: Page;
