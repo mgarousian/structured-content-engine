@@ -9,6 +9,7 @@ type EditorStore = {
   selectBlock: (id: string | null) => void;
   updateBlock: (id: string, data: any) => void;
   addBlock: (type: string, data: any) => void;
+  addBlockAt: (type: string, data: any, index: number) => void;
   deleteBlock: (id: string) => void;
   moveBlockUp: (id: string) => void;
   moveBlockDown: (id: string) => void;
@@ -95,6 +96,23 @@ export const useEditorStore = create<EditorStore>((set) => ({
       const nextPage: Page = {
         ...state.page,
         blocks: [...state.page.blocks, newBlock],
+      };
+      savePageToStorage(nextPage);
+      return { page: nextPage, selectedBlockId: newBlock.id };
+    }),
+  addBlockAt: (type, data, index) =>
+    set((state) => {
+      const newBlock = {
+        id: createBlockId(),
+        type,
+        data,
+      };
+      const nextBlocks = [...state.page.blocks];
+      const insertIndex = Math.max(0, Math.min(index, nextBlocks.length));
+      nextBlocks.splice(insertIndex, 0, newBlock);
+      const nextPage: Page = {
+        ...state.page,
+        blocks: nextBlocks,
       };
       savePageToStorage(nextPage);
       return { page: nextPage, selectedBlockId: newBlock.id };

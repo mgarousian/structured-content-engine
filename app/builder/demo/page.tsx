@@ -5,7 +5,7 @@ import '../../../src/blocks/heading'; // ensure heading block registers itself
 import '../../../src/blocks/paragraph'; // ensure paragraph block registers itself
 import '../../../src/blocks/image'; // ensure image block registers itself
 import { getBlock, listBlocks } from '../../../src/blocks/registry';
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useEditorStore, loadPageFromStorage } from '../../../src/store/editor';
 import type { BlockInstance } from '../../../src/types/blocks';
@@ -89,13 +89,13 @@ function BlockCard({
 
 export default function Page() {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [pendingInsertIndex, setPendingInsertIndex] = useState(0);
   const page = useEditorStore((s) => s.page);
   const blocks = page?.blocks ?? [];
   const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const updateBlock = useEditorStore((s) => s.updateBlock);
-  const addBlock = useEditorStore((s) => s.addBlock);
+  const addBlockAt = useEditorStore((s) => s.addBlockAt);
   const deleteBlock = useEditorStore((s) => s.deleteBlock);
   const moveBlockUp = useEditorStore((s) => s.moveBlockUp);
   const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
@@ -107,10 +107,15 @@ export default function Page() {
     loadPageFromStorage();
   }, []);
 
+  const openPickerForIndex = (index: number) => {
+    setPendingInsertIndex(index);
+    setPickerOpen(true);
+  };
+
   const handleAddBlock = (type: string) => {
     const def = getBlock(type);
     if (!def) return;
-    addBlock(type, def.defaultData);
+    addBlockAt(type, def.defaultData, pendingInsertIndex);
     setPickerOpen(false);
   };
 
@@ -120,63 +125,108 @@ export default function Page() {
         <Link href="/page/demo">
           <Button variant="outline">مشاهده پیش‌نمایش</Button>
         </Link>
-        <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-          <DialogTrigger asChild>
-            <Button>+ افزودن بلوک</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogTitle>افزودن بلاک جدید</DialogTitle>
-            <DialogDescription>یک نوع بلاک را انتخاب کنید تا به صفحه اضافه شود.</DialogDescription>
-            <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
-              {availableBlocks.map((block) => (
-                <Button
-                  key={block.type}
-                  variant="outline"
-                  className="w-full justify-between"
-                  onClick={() => handleAddBlock(block.type)}
-                >
-                  {block.label}
-                  <span style={{ opacity: 0.7 }}>{block.type}</span>
-                </Button>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent>
+          <DialogTitle>افزودن بلاک جدید</DialogTitle>
+          <DialogDescription>یک نوع بلاک را انتخاب کنید تا به صفحه اضافه شود.</DialogDescription>
+          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+            {availableBlocks.map((block) => (
+              <Button
+                key={block.type}
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => handleAddBlock(block.type)}
+              >
+                {block.label}
+                <span style={{ opacity: 0.7 }}>{block.type}</span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ flex: 1 }}>
           {blocks.length === 0 ? (
-            <div style={{ padding: 24, border: '1px solid #eee', borderRadius: 8, color: '#555' }}>
-              هنوز بلوکی به این صفحه اضافه نشده است.
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 240,
+                padding: 24,
+                border: '1px solid #eee',
+                borderRadius: 8,
+                color: '#555',
+              }}
+            >
+              <div style={{ marginBottom: 16 }}>صفحه خالی است</div>
+              <Button variant="outline" onClick={() => openPickerForIndex(0)}>
+                + افزودن اولین بلوک
+              </Button>
             </div>
           ) : (
-            blocks.map((b, idx) => {
-              const def = getBlock(b.type);
-              if (!def || !def.renderer) {
-                return (
-                  <div key={b.id} style={{ padding: 12, border: '1px solid #eee', marginBottom: 12 }}>
-                    بلاک ناشناخته: {b.type}
-                  </div>
-                );
-              }
+            <>
+              <div style={{ marginBottom: 12 }}>
+                <Button
+                  variant="outline"
+                  className="w-full justify-center"
+                  onClick={() => openPickerForIndex(0)}
+                >
+                  + افزودن بلوک
+                </Button>
+              </div>
+              {blocks.map((b, idx) => {
+                const def = getBlock(b.type);
+                if (!def || !def.renderer) {
+                  return (
+                    <React.Fragment key={b.id}>
+                      <div style={{ padding: 12, border: '1px solid #eee', marginBottom: 12 }}>
+                        بلاک ناشناخته: {b.type}
+                      </div>
+                      <div style={{ marginBottom: 12 }}>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-center"
+                          onClick={() => openPickerForIndex(idx + 1)}
+                        >
+                          + افزودن بلوک
+                        </Button>
+                      </div>
+                    </React.Fragment>
+                  );
+                }
 
-              return (
-                <BlockCard
-                  key={b.id}
-                  block={b}
-                  label={def.label}
-                  renderer={def.renderer}
-                  isSelected={selectedBlockId === b.id}
-                  onSelect={() => selectBlock(b.id)}
-                  onDelete={() => deleteBlock(b.id)}
-                  onMoveUp={() => moveBlockUp(b.id)}
-                  onMoveDown={() => moveBlockDown(b.id)}
-                  canMoveUp={idx > 0}
-                  canMoveDown={idx < blocks.length - 1}
-                />
-              );
-            })
+                return (
+                  <React.Fragment key={b.id}>
+                    <BlockCard
+                      block={b}
+                      label={def.label}
+                      renderer={def.renderer}
+                      isSelected={selectedBlockId === b.id}
+                      onSelect={() => selectBlock(b.id)}
+                      onDelete={() => deleteBlock(b.id)}
+                      onMoveUp={() => moveBlockUp(b.id)}
+                      onMoveDown={() => moveBlockDown(b.id)}
+                      canMoveUp={idx > 0}
+                      canMoveDown={idx < blocks.length - 1}
+                    />
+                    <div style={{ marginBottom: 12 }}>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-center"
+                        onClick={() => openPickerForIndex(idx + 1)}
+                      >
+                        + افزودن بلوک
+                      </Button>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </>
           )}
         </div>
 
