@@ -29,21 +29,28 @@ function SortableBlock({
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const transformString = CSS.Transform.toString(transform);
+  const dragTransform = isDragging
+    ? [transformString, 'scale(0.98)'].filter(Boolean).join(' ')
+    : transformString;
 
   return (
     <div
       ref={setNodeRef}
       onClick={onSelect}
       style={{
-        transform: CSS.Transform.toString(transform),
+        transform: dragTransform,
         transition,
-        opacity: isDragging ? 0.6 : 1,
+        opacity: isDragging ? 0.8 : 1,
         padding: 12,
         border: isSelected ? '2px solid #3b82f6' : '1px solid #eee',
         borderRadius: 8,
         marginBottom: 12,
         cursor: 'pointer',
         backgroundColor: '#fff',
+        boxShadow: isDragging ? '0 18px 45px rgba(15, 23, 42, 0.12)' : undefined,
+        maxHeight: isDragging ? 160 : undefined,
+        overflow: isDragging ? 'hidden' : undefined,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
