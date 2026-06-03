@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useEditorStore, setStorageKey } from '@/src/store/editor';
 import { getDocumentByKey } from '@/src/core/storage/documentStorage';
 import { getModuleConfig } from '@/src/modules/registry';
+import { getBlogDocument } from '@/src/modules/blog/api/client';
 import BlogMetadataEditor from './BlogMetadataEditor';
 import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
 
@@ -63,6 +64,18 @@ export default function BuilderEditor({
   useEffect(() => {
     setMounted(true);
     setStorageKey(storageKey);
+
+    const parsedKey = /^content-engine:doc:([^:]+):([^:]+)$/.exec(storageKey);
+    if (parsedKey?.[1] === 'blog') {
+      void getBlogDocument(parsedKey[2]).then((storedDocument) => {
+        if (storedDocument && isValidContentDocument(storedDocument, initialPage.contentType)) {
+          useEditorStore.getState().setPage(storedDocument);
+        } else {
+          useEditorStore.getState().setPage(initialPage);
+        }
+      });
+      return;
+    }
 
     const storedDocument = getDocumentByKey(storageKey);
     if (storedDocument && isValidContentDocument(storedDocument, initialPage.contentType)) {

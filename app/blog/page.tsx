@@ -1,26 +1,13 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { listDocuments } from '@/src/core/storage/documentStorage';
+import { listPublishedBlogSummaries } from '@/src/modules/blog/api/server';
 import type { DocumentMetadata } from '@/src/core/storage/documentStorage';
 
-export default function Page() {
-  const [posts, setPosts] = useState<DocumentMetadata[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const allDocs = listDocuments('blog');
-    const publishedPosts = allDocs
-      .filter((doc) => doc.status === 'published')
-      .sort((left, right) => {
-        const leftDate = left.publishedAt ?? left.updatedAt ?? '';
-        const rightDate = right.publishedAt ?? right.updatedAt ?? '';
-        return new Date(rightDate).getTime() - new Date(leftDate).getTime();
-      });
-    setPosts(publishedPosts);
-    setLoaded(true);
-  }, []);
+export default async function Page() {
+  const posts: DocumentMetadata[] = (await listPublishedBlogSummaries()).sort((left, right) => {
+    const leftDate = left.publishedAt ?? left.updatedAt ?? '';
+    const rightDate = right.publishedAt ?? right.updatedAt ?? '';
+    return new Date(rightDate).getTime() - new Date(leftDate).getTime();
+  });
 
   return (
     <div dir="rtl" style={{ minHeight: '100vh', padding: 24, backgroundColor: '#f8fafc' }}>
@@ -40,9 +27,7 @@ export default function Page() {
           </p>
         </div>
 
-        {!loaded ? (
-          <div style={{ color: '#64748b' }}>درحال بارگذاری...</div>
-        ) : posts.length === 0 ? (
+        {posts.length === 0 ? (
           <div style={{ background: '#fff', borderRadius: 16, padding: 32, textAlign: 'center', color: '#64748b' }}>
             هنوز پستی منتشر نشده است.
           </div>
@@ -53,22 +38,9 @@ export default function Page() {
               return (
                 <Link key={post.slug} href={`/blog/${post.slug}`} style={{ textDecoration: 'none' }}>
                   <article
+                    className="cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
                     style={{
-                      background: '#fff',
-                      borderRadius: 12,
-                      padding: 24,
                       boxShadow: '0 20px 50px rgba(15,23,42,0.08)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      border: '1px solid #e2e8f0',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.boxShadow = '0 20px 50px rgba(15,23,42,0.12)';
-                      (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.boxShadow = '0 20px 50px rgba(15,23,42,0.08)';
-                      (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
                     }}
                   >
                     <h2 style={{ margin: 0, fontSize: 22, color: '#0f172a', fontWeight: 600 }}>

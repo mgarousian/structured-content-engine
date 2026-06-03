@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createDocument, listDocuments, deleteDocument, updateDocumentStatus } from '@/src/core/storage/documentStorage';
 import blogConfig from '@/src/modules/blog/config';
+import { createBlogDocument, deleteBlogDocument, getBlogDocument, listBlogDocuments, saveBlogDocument } from '@/src/modules/blog/api/client';
 import type { DocumentMetadata } from '@/src/core/storage/documentStorage';
+import type { ContentDocument } from '@/src/types/blocks';
 
 const statusLabels: Record<string, string> = {
   draft: 'پیش‌نویس',
@@ -25,8 +26,9 @@ export default function Page() {
   const router = useRouter();
   const moduleKey = 'blog';
 
-  const loadDocuments = () => {
-    const sortedDocuments = [...listDocuments(moduleKey)].sort((left, right) => {
+  const loadDocuments = async () => {
+    const allDocuments = await listBlogDocuments();
+    const sortedDocuments = [...allDocuments].sort((left, right) => {
       const leftDate = left.updatedAt ?? left.publishedAt ?? left.createdAt ?? '';
       const rightDate = right.updatedAt ?? right.publishedAt ?? right.createdAt ?? '';
       return new Date(rightDate).getTime() - new Date(leftDate).getTime();
@@ -35,30 +37,39 @@ export default function Page() {
   };
 
   useEffect(() => {
-    loadDocuments();
-    setLoaded(true);
+    loadDocuments().finally(() => setLoaded(true));
   }, []);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const id = createId();
     const document = blogConfig.createDefaultDocument(id);
-    createDocument(moduleKey, document);
-    router.push(`/builder/${moduleKey}/${id}`);
+    await createBlogDocument(document);
+    router.push(`/builder/blog/${id}`);
   };
 
   const handleDelete = (id: string, title: string) => {
     if (typeof window === 'undefined') return;
     const confirmed = window.confirm(`آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟\n\n"${title}"`);
     if (confirmed) {
-      deleteDocument(moduleKey, id);
-      loadDocuments();
+      deleteBlogDocument(id).then(() => loadDocuments());
     }
   };
 
-  const handleToggleStatus = (id: string, currentStatus: string) => {
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'published' ? 'draft' : 'published';
-    updateDocumentStatus(moduleKey, id, newStatus as 'draft' | 'published');
-    loadDocuments();
+    const document = await getBlogDocument(id);
+    if (!document) return;
+    const publishedAt =
+      newStatus === 'published' && !document.publishedAt
+        ? new Date().toISOString()
+        : document.publishedAt;
+    const updatedDocument: ContentDocument = {
+      ...document,
+      status: newStatus as 'draft' | 'published',
+      publishedAt: newStatus === 'published' ? publishedAt : document.publishedAt,
+    };
+    await saveBlogDocument(updatedDocument);
+    await loadDocuments();
   };
 
   return (
