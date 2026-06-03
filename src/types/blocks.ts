@@ -25,3 +25,27 @@ export interface Page {
 }
 
 export type BlockRegistryMap = Record<BlockType, BlockDefinition<any>>;
+
+// Canonical block data types
+export type HeadingBlockData = {
+  text: string;
+  level: 'h1' | 'h2' | 'h3';
+};
+
+export type ParagraphBlockData = {
+  text: string;
+};
+
+export type ImageBlockData = {
+  src: string;
+  alt?: string;
+  caption?: string;
+};
+
+export type HeroBlockData = {
+  title: string;
+  subtitle?: string;
+  primaryCtaText?: string;
+  primaryCtaHref?: string;
+  imageSrc?: string;
+};

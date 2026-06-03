@@ -4,6 +4,7 @@ import Link from 'next/link';
 import '../../../src/blocks/heading'; // ensure heading block registers itself
 import '../../../src/blocks/paragraph'; // ensure paragraph block registers itself
 import '../../../src/blocks/image'; // ensure image block registers itself
+import '../../../src/blocks/hero'; // ensure hero block registers itself
 import { getBlock, listBlocks } from '../../../src/blocks/registry';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -101,7 +102,7 @@ export default function Page() {
   const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
-  const availableBlocks = listBlocks().filter((block) => ['heading', 'paragraph', 'image'].includes(block.type));
+  const availableBlocks = listBlocks().filter((block) => ['heading', 'paragraph', 'image', 'hero'].includes(block.type));
 
   useEffect(() => {
     loadPageFromStorage();
