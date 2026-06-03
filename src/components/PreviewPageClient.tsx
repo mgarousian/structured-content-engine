@@ -6,6 +6,7 @@ import { getDocument } from '@/src/core/storage/documentStorage';
 import { isModuleKey } from '@/src/modules/registry';
 import { getBlock } from '@/src/blocks/registry';
 import BlogPostTemplate from '@/src/modules/blog/components/BlogPostTemplate';
+import { getBlogDocument } from '@/src/modules/blog/api/client';
 import type { ContentDocument } from '@/src/types/blocks';
 
 type PreviewPageClientProps = {
@@ -21,6 +22,12 @@ export default function PreviewPageClient({ moduleKey, documentId }: PreviewPage
   useEffect(() => {
     if (!isModuleKey(normalizedModule)) {
       setLoaded(true);
+      return;
+    }
+    if (normalizedModule === 'blog') {
+      getBlogDocument(documentId)
+        .then((document) => setPage(document))
+        .finally(() => setLoaded(true));
       return;
     }
     const document = getDocument(normalizedModule, documentId);

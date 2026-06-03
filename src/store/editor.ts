@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getDocumentByKey, saveDocumentByKey } from '../core/storage/documentStorage';
+import { getBlogDocument, saveBlogDocument } from '../modules/blog/api/client';
 import { ContentDocument, ContentType, ContentStatus, BlockInstance } from '../types/blocks';
 
 let STORAGE_KEY = 'content-engine:doc:blog:demo';
@@ -79,8 +80,17 @@ const parseStoredPage = (value: string | null): ContentDocument | null => {
   }
 };
 
+const isBlogStorageKey = (storageKey: string) => /^content-engine:doc:blog:/.test(storageKey);
+
 const savePageToStorage = (page: ContentDocument): ContentDocument => {
   if (typeof window === 'undefined') return page;
+  if (page.contentType === 'blogPost' && isBlogStorageKey(STORAGE_KEY)) {
+    void saveBlogDocument(page);
+    return {
+      ...page,
+      updatedAt: new Date().toISOString(),
+    };
+  }
   const storedPage = saveDocumentByKey(STORAGE_KEY, page);
   return storedPage ?? page;
 };
@@ -196,6 +206,15 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
 export const loadPageFromStorage = () => {
   if (typeof window === 'undefined') return;
+  const parsedKey = /^content-engine:doc:([^:]+):([^:]+)$/.exec(STORAGE_KEY);
+  if (parsedKey?.[1] === 'blog') {
+    void getBlogDocument(parsedKey[2]).then((page) => {
+      if (page) {
+        useEditorStore.getState().setPage(page);
+      }
+    });
+    return;
+  }
   const page = getDocumentByKey(STORAGE_KEY);
   if (page) {
     useEditorStore.getState().setPage(page);

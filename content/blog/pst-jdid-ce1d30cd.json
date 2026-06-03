@@ -1,0 +1,38 @@
+{
+  "id": "ce1d30cd",
+  "contentType": "blogPost",
+  "title": "پست اول",
+  "slug": "pst-jdid-ce1d30cd",
+  "excerpt": "اینجا متن خلاصه",
+  "status": "published",
+  "blocks": [
+    {
+      "id": "b1",
+      "type": "heading",
+      "data": {
+        "text": "پست اول",
+        "level": "h1"
+      }
+    },
+    {
+      "id": "b2",
+      "type": "paragraph",
+      "data": {
+        "text": "محتوای پاراگراف نمونه برای پست بلاگ."
+      }
+    },
+    {
+      "id": "block-d98f6b77-1df6-4b32-b23d-48dde1eb42fe",
+      "type": "image",
+      "data": {
+        "src": "https://images.unsplash.com/photo-1498050108023-c5249f4df085",
+        "alt": "تصویر نمونه",
+        "caption": "کپشن تصویر نمونه"
+      }
+    }
+  ],
+  "createdAt": "2026-06-03T16:43:36.694Z",
+  "module": "blog",
+  "updatedAt": "2026-06-03T16:44:13.377Z",
+  "publishedAt": "2026-06-03T16:44:13.355Z"
+}
