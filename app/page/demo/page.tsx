@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import '../../../src/blocks/heading';
 import '../../../src/blocks/paragraph';
+import '../../../src/blocks/image';
 import { getBlock } from '../../../src/blocks/registry';
 import { Button } from '@/components/ui/button';
 import type { Page as PageType } from '../../../src/types/blocks';
