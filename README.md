@@ -1,96 +1,107 @@
 # Structured Content Engine
 
-A shared block-based content engine for AI-assisted publishing workflows.
+A modular block-based content engine for building editable and publishable content.
 
-This project started as a simple RTL page builder, but its direction is evolving into a structured content engine that can support different publishing products on top of the same core.
+The project uses one shared editor core for different content modules.
+Current modules:
 
-The first two product directions are:
+* Blog
+* Landing Page
 
-* Blog Publishing Workflow
-* Landing Page Generation Workflow
-
-Both workflows should share the same core infrastructure: block model, editor, renderer, theme system, and publishing layer.
-
----
-
-## Product Direction
-
-The goal is not just to build another visual page builder.
-
-The goal is to create a system where users can move from idea, strategy, or business context to structured, editable, publishable content.
-
-AI can help generate the first draft or structure, but the final review and publishing decision stays with the human/admin.
+The goal is to avoid building separate editors for every product. Blog and Landing use the same core editor, renderer, storage layer, and block registry, but each module can define its own allowed blocks and workflow.
 
 ---
 
-## Core Concept
+## Current Branch
 
-Every page is represented as structured JSON made of reusable blocks.
-
-Example:
-
-```json
-{
-  "id": "demo",
-  "slug": "demo",
-  "title": "Demo Page",
-  "blocks": [
-    {
-      "id": "block-1",
-      "type": "heading",
-      "data": {
-        "text": "عنوان اصلی صفحه",
-        "level": "h1"
-      }
-    },
-    {
-      "id": "block-2",
-      "type": "paragraph",
-      "data": {
-        "text": "این یک پاراگراف نمونه برای محتوای صفحه است."
-      }
-    }
-  ]
-}
+```txt
+feature/content-type-modules
 ```
 
-The editor, renderer, preview page, and future publishing flows all work from this structured block model.
+This branch adds module separation for Blog and Landing while keeping the editor core shared.
 
 ---
 
-## Current Status
+## Core Features
 
 Implemented:
 
-* Next.js App Router
-* TypeScript
-* Tailwind CSS
-* shadcn/ui
-* Zustand store
-* RTL-first layout
+* Shared block editor
+* Block registry
+* Blog module
+* Landing module
+* Module-specific allowed blocks
+* Dynamic builder routes
+* Dynamic preview routes
+* localStorage document storage
+* Admin list pages
+* RTL layout
 * Vazirmatn typography
-* Block registry architecture
-* Heading block
-* Paragraph block
-* Image block
-* Block selection
-* Block editing
-* Inline block insertion
-* Block deletion
-* Block reordering with Up/Down controls
-* localStorage persistence
-* Public preview page
 
-Current demo routes:
+Current blocks:
+
+* Heading
+* Paragraph
+* Image
+* Hero
+
+---
+
+## Routes
+
+Admin entry:
 
 ```txt
-/builder/demo
-/page/demo
+/admin
+```
+
+Module lists:
+
+```txt
+/admin/blog
+/admin/landing
+```
+
+Builder:
+
+```txt
+/builder/blog/:id
+/builder/landing/:id
+```
+
+Preview:
+
+```txt
+/page/blog/:id
+/page/landing/:id
 ```
 
 ---
 
-## Running the Project
+## Module Rules
+
+### Blog
+
+Allowed blocks:
+
+* Heading
+* Paragraph
+* Image
+
+Hero is not available in Blog.
+
+### Landing
+
+Allowed blocks:
+
+* Heading
+* Paragraph
+* Image
+* Hero
+
+---
+
+## Run Project
 
 Install dependencies:
 
@@ -98,251 +109,58 @@ Install dependencies:
 npm install
 ```
 
-Start the development server:
+Run development server:
 
 ```bash
 npm run dev
 ```
 
-Open the builder:
+Open:
 
 ```txt
-http://localhost:3000/builder/demo
+http://localhost:3000/admin
 ```
 
-Open the public preview:
+---
+
+## Test Flow
+
+Blog:
 
 ```txt
-http://localhost:3000/page/demo
+/admin → Blog → Create New Blog Post → Edit → Preview
 ```
 
----
-
-## Current Demo
-
-The current demo lets you:
-
-* Add blocks inline between existing blocks
-* Edit block content
-* Delete blocks
-* Move blocks up and down
-* Persist changes in localStorage
-* Preview the rendered page without editor UI
-
-Current available blocks:
-
-* Heading
-* Paragraph
-* Image
-
----
-
-## Architecture Direction
-
-The project should keep a clear separation between:
-
-### Core
-
-Shared infrastructure used by all product lines.
-
-Examples:
-
-* Block model
-* Block registry
-* Editor
-* Renderer
-* Theme system
-* Publishing system
-* Media handling
-* AI services
-* Scheduling
-
-### Product Lines
-
-Different workflows built on top of the shared core.
-
-Initial product lines:
-
-* Blog
-* Landing
-
-Each product line can have its own allowed blocks, AI flow, templates, and publishing logic, while still using the same core engine.
-
----
-
-## Blog Workflow Direction
-
-The blog workflow should help admins produce editorial content faster.
-
-Possible future flow:
+Landing:
 
 ```txt
-Content Strategy
-→ Topic Ideas
-→ Central Idea Extraction
-→ AI Draft Generation
-→ Human Review
-→ Scheduled Publishing
-→ Published Blog Post
+/admin → Landing → Create New Landing Page → Edit → Preview
 ```
 
-Future capabilities may include:
+Expected:
 
-* Content strategy generation
-* Topic clustering
-* Editorial calendar
-* Draft queue
-* Scheduled publishing
-* SEO suggestions
-* Blog-specific blocks
-
-Possible blog blocks:
-
-* Heading
-* Paragraph
-* Image
-* Quote
-* Table of Contents
-* Author Bio
-* Related Posts
-* CTA
+* Blog and Landing use the same editor core.
+* Each module shows only its allowed blocks.
+* Documents persist in localStorage.
+* Preview renders without editor UI.
 
 ---
 
-## Landing Workflow Direction
+## Architecture Principle
 
-The landing workflow should help users generate campaign or business pages from guided input.
+AI should not generate UI or code.
 
-Possible future flow:
-
-```txt
-Guided Wizard
-→ Business Context
-→ AI Scenario Suggestions
-→ Landing Structure Generation
-→ Human Review
-→ Publish
-```
-
-Future capabilities may include:
-
-* Landing page wizard
-* Scenario generation
-* Industry-specific recommendations
-* Conversion-focused sections
-* Lead capture blocks
-* Landing-specific themes
-* A/B variations
-
-Possible landing blocks:
-
-* Hero
-* Features
-* Process
-* Testimonials
-* FAQ
-* CTA
-* Pricing
-* Countdown
-* Lead Form
-
----
-
-## Block Availability by Product Line
-
-Not every block should be available everywhere.
-
-The core block registry should eventually support product-specific availability.
-
-Example:
-
-```ts
-{
-  type: "hero",
-  label: "Hero",
-  availableFor: ["landing"]
-}
-```
-
-```ts
-{
-  type: "authorBio",
-  label: "Author Bio",
-  availableFor: ["blog"]
-}
-```
-
-Shared blocks such as Heading, Paragraph, Image, and Button can be available in both workflows.
-
----
-
-## Theme Direction
-
-The theme system should belong to the core, not to a single product line.
-
-Future themes may control:
-
-* Typography
-* Colors
-* Spacing
-* Radius
-* Block rhythm
-* Component styling
-
-Blog and Landing can use different theme presets, but they should share the same underlying theme engine.
-
----
-
-## Current Limitations
-
-This is still an early MVP.
-
-Current limitations:
-
-* Data is stored in localStorage
-* No backend yet
-* No authentication
-* No real publishing workflow
-* No scheduling
-* No AI integration yet
-* No media upload
-* No theme system yet
-* No separate Blog/Landing routes yet
+AI should generate structured content.
+The core engine handles editing, rendering, validation, themes, and publishing.
 
 ---
 
 ## Near-Term Roadmap
 
-Recommended next steps:
-
-1. Stabilize the current core editor
-2. Add Button block
-3. Add basic block grouping/categorization
-4. Add page kind/type: `blog` or `landing`
-5. Filter available blocks based on page kind
-6. Create separate routes for Blog and Landing editors
-7. Start defining the Blog Pipeline
-8. Start defining the Landing Pipeline
-9. Introduce a simple theme model
-10. Move from localStorage to a persistent backend when the core model is stable
-
----
-
-## Long-Term Vision
-
-Structured Content Engine should become a shared foundation for AI-assisted publishing.
-
-The system should help users move from raw intent to structured content, from structured content to editable pages, and from editable pages to published outputs.
-
-The value is not only in editing blocks.
-
-The value is in the full pipeline:
-
-```txt
-Idea
-→ Structure
-→ AI Draft
-→ Human Review
-→ Theme
-→ Publish
-```
+* Stabilize admin navigation
+* Improve document list behavior
+* Add block metadata and categories
+* Improve Add Block modal organization
+* Add more Blog and Landing blocks
+* Define simple theme model
+* Define AI output contracts for Blog and Landing
