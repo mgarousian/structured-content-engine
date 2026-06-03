@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Page, BlockInstance } from '../types/blocks';
+import { arrayMove } from '@dnd-kit/sortable';
 
 const STORAGE_KEY = 'page-builder:mvp:demo';
 
@@ -10,6 +11,7 @@ type EditorStore = {
   updateBlock: (id: string, data: any) => void;
   addBlock: (type: string, data: any) => void;
   deleteBlock: (id: string) => void;
+  reorderBlocks: (activeId: string, overId: string) => void;
   setPage: (p: Page) => void;
 };
 
@@ -108,6 +110,21 @@ export const useEditorStore = create<EditorStore>((set) => ({
         page: nextPage,
         selectedBlockId: state.selectedBlockId === id ? null : state.selectedBlockId,
       };
+    }),
+  reorderBlocks: (activeId, overId) =>
+    set((state) => {
+      const activeIndex = state.page.blocks.findIndex((block: BlockInstance) => block.id === activeId);
+      const overIndex = state.page.blocks.findIndex((block: BlockInstance) => block.id === overId);
+      if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) {
+        return state;
+      }
+      const nextBlocks = arrayMove(state.page.blocks, activeIndex, overIndex);
+      const nextPage: Page = {
+        ...state.page,
+        blocks: nextBlocks,
+      };
+      savePageToStorage(nextPage);
+      return { page: nextPage };
     }),
   setPage: (p) => {
     savePageToStorage(p);
