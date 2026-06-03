@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getDocument } from '@/src/core/storage/documentStorage';
 import { isModuleKey } from '@/src/modules/registry';
 import { getBlock } from '@/src/blocks/registry';
+import BlogPostTemplate from '@/src/modules/blog/components/BlogPostTemplate';
 import type { ContentDocument } from '@/src/types/blocks';
 
 type PreviewPageClientProps = {
@@ -62,6 +63,16 @@ export default function PreviewPageClient({ moduleKey, documentId }: PreviewPage
           </div>
         </main>
       </div>
+    );
+  }
+
+  if (normalizedModule === 'blog') {
+    return (
+      <BlogPostTemplate
+        post={page}
+        backHref={`/builder/${normalizedModule}/${documentId}`}
+        backLabel="بازگشت به ویرایشگر"
+      />
     );
   }
 

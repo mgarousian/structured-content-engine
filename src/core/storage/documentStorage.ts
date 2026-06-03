@@ -4,7 +4,10 @@ export type DocumentMetadata = {
   id: string;
   title: string;
   slug: string;
+  excerpt?: string;
   status: ContentStatus;
+  publishedAt?: string;
+  createdAt?: string;
   updatedAt?: string;
 };
 
@@ -87,7 +90,10 @@ const updateIndexEntry = (moduleKey: string, document: ContentDocument) => {
     id: document.id,
     title: document.title,
     slug: document.slug,
+    ...(document.excerpt ? { excerpt: document.excerpt } : {}),
     status: document.status,
+    ...(document.publishedAt ? { publishedAt: document.publishedAt } : {}),
+    ...(document.createdAt ? { createdAt: document.createdAt } : {}),
     updatedAt: new Date().toISOString(),
   };
   entries.push(metadata);
@@ -122,6 +128,7 @@ export const saveDocument = (moduleKey: string, document: ContentDocument): Cont
   if (typeof window === 'undefined') return null;
   const storedDocument = {
     ...document,
+    createdAt: document.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   try {
@@ -142,6 +149,7 @@ export const saveDocumentByKey = (storageKey: string, document: ContentDocument)
 
   const storedDocument = {
     ...document,
+    createdAt: document.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   try {
@@ -164,4 +172,27 @@ export const deleteDocument = (moduleKey: string, id: string) => {
   } catch {
     // ignore
   }
+};
+
+export const updateDocumentStatus = (
+  moduleKey: string,
+  id: string,
+  status: ContentStatus
+): ContentDocument | null => {
+  if (typeof window === 'undefined') return null;
+  const document = getDocument(moduleKey, id);
+  if (!document) return null;
+
+  const publishedAt =
+    status === 'published' && !document.publishedAt
+      ? new Date().toISOString()
+      : document.publishedAt;
+
+  const updatedDocument: ContentDocument = {
+    ...document,
+    status,
+    publishedAt: status === 'published' ? publishedAt : document.publishedAt,
+  };
+
+  return saveDocument(moduleKey, updatedDocument);
 };

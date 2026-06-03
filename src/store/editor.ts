@@ -19,6 +19,12 @@ type EditorStore = {
   moveBlockUp: (id: string) => void;
   moveBlockDown: (id: string) => void;
   setPage: (p: ContentDocument) => void;
+  setPageMetadata: (metadata: {
+    title?: string;
+    slug?: string;
+    excerpt?: string;
+    status?: ContentStatus;
+  }) => void;
 };
 
 const initialPage: ContentDocument = {
@@ -168,6 +174,24 @@ export const useEditorStore = create<EditorStore>((set) => ({
     const storedPage = savePageToStorage(p);
     return set(() => ({ page: storedPage }));
   },
+  setPageMetadata: (metadata) =>
+    set((state) => {
+      const publishedAt =
+        metadata.status === 'published' && !state.page.publishedAt
+          ? new Date().toISOString()
+          : state.page.publishedAt;
+
+      const nextPage: ContentDocument = {
+        ...state.page,
+        title: metadata.title ?? state.page.title,
+        slug: metadata.slug ?? state.page.slug,
+        excerpt: metadata.excerpt ?? state.page.excerpt,
+        status: metadata.status ?? state.page.status,
+        publishedAt: metadata.status === 'published' ? publishedAt : state.page.publishedAt,
+      };
+      const storedPage = savePageToStorage(nextPage);
+      return { page: storedPage };
+    }),
 }));
 
 export const loadPageFromStorage = () => {

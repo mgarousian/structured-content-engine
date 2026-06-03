@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createDocument, listDocuments } from '@/src/core/storage/documentStorage';
+import { createDocument, listDocuments, deleteDocument, updateDocumentStatus } from '@/src/core/storage/documentStorage';
 import blogConfig from '@/src/modules/blog/config';
 import type { DocumentMetadata } from '@/src/core/storage/documentStorage';
 
@@ -11,7 +11,7 @@ const statusLabels: Record<string, string> = {
   draft: 'پیش‌نویس',
   review: 'در بازبینی',
   scheduled: 'زمان‌بندی‌شده',
-  published: 'منتشر شده',
+  published: 'منتشرشده',
 };
 
 const createId = () =>
@@ -25,8 +25,17 @@ export default function Page() {
   const router = useRouter();
   const moduleKey = 'blog';
 
+  const loadDocuments = () => {
+    const sortedDocuments = [...listDocuments(moduleKey)].sort((left, right) => {
+      const leftDate = left.updatedAt ?? left.publishedAt ?? left.createdAt ?? '';
+      const rightDate = right.updatedAt ?? right.publishedAt ?? right.createdAt ?? '';
+      return new Date(rightDate).getTime() - new Date(leftDate).getTime();
+    });
+    setDocuments(sortedDocuments);
+  };
+
   useEffect(() => {
-    setDocuments(listDocuments(moduleKey));
+    loadDocuments();
     setLoaded(true);
   }, []);
 
@@ -35,6 +44,21 @@ export default function Page() {
     const document = blogConfig.createDefaultDocument(id);
     createDocument(moduleKey, document);
     router.push(`/builder/${moduleKey}/${id}`);
+  };
+
+  const handleDelete = (id: string, title: string) => {
+    if (typeof window === 'undefined') return;
+    const confirmed = window.confirm(`آیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟\n\n"${title}"`);
+    if (confirmed) {
+      deleteDocument(moduleKey, id);
+      loadDocuments();
+    }
+  };
+
+  const handleToggleStatus = (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+    updateDocumentStatus(moduleKey, id, newStatus as 'draft' | 'published');
+    loadDocuments();
   };
 
   return (
@@ -53,7 +77,7 @@ export default function Page() {
             </Link>
             <button
               onClick={handleCreate}
-              style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #94a3b8', background: 'white', cursor: 'pointer' }}
+              style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
             >
               ساخت پست جدید
             </button>
@@ -66,31 +90,87 @@ export default function Page() {
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 16 }}>
-            {documents.map((doc) => (
-              <div key={doc.id} style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 20px 50px rgba(15,23,42,0.08)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: 20, color: '#0f172a' }}>{doc.title}</h2>
-                    <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-                      {statusLabels[doc.status] ?? doc.status}
-                      {doc.updatedAt ? ` • به‌روزرسانی شده در ${new Date(doc.updatedAt).toLocaleString('fa-IR')}` : ''}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Link href={`/builder/${moduleKey}/${doc.id}`}>
-                      <button style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #94a3b8', background: 'white', cursor: 'pointer' }}>
-                        ویرایش
+            {documents.map((doc) => {
+              const pubDate = doc.publishedAt ? new Date(doc.publishedAt).toLocaleDateString('fa-IR') : '—';
+              const pubTime = doc.publishedAt ? new Date(doc.publishedAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : '';
+              const isPublished = doc.status === 'published';
+              const openHref = isPublished && doc.slug ? `/blog/${doc.slug}` : `/page/blog/${doc.id}`;
+              const openLabel = isPublished && doc.slug ? 'مشاهده پست' : 'مشاهده پیش‌نمایش';
+              return (
+                <div key={doc.id} style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 20px 50px rgba(15,23,42,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <h2 style={{ margin: 0, fontSize: 20, color: '#0f172a' }}>{doc.title}</h2>
+                      <p style={{ margin: '6px 0 8px', fontSize: 14, color: '#64748b' }}>
+                        {doc.slug}
+                      </p>
+                      {doc.excerpt && (
+                        <p style={{ margin: '0 0 10px', fontSize: 14, color: '#475569' }}>
+                          {doc.excerpt}
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#64748b', flexWrap: 'wrap' }}>
+                        <span>
+                          وضعیت: <strong style={{ color: isPublished ? '#10b981' : '#3b82f6' }}>{statusLabels[doc.status] ?? doc.status}</strong>
+                        </span>
+                        {doc.publishedAt && (
+                          <span>
+                            منتشر شده: <strong>{pubDate} {pubTime}</strong>
+                          </span>
+                        )}
+                        {doc.updatedAt && (
+                          <span>
+                            به‌روزرسانی: <strong>{new Date(doc.updatedAt).toLocaleDateString('fa-IR')}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 'fit-content' }}>
+                      <Link href={`/builder/${moduleKey}/${doc.id}`}>
+                        <button style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #94a3b8', background: 'white', cursor: 'pointer', fontSize: 14 }}>
+                          ویرایش
+                        </button>
+                      </Link>
+                      <Link href={openHref}>
+                        <button style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #94a3b8', background: 'white', cursor: 'pointer', fontSize: 14 }}>
+                          {openLabel}
+                        </button>
+                      </Link>
+                      <button
+                        onClick={() => handleToggleStatus(doc.id, doc.status)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: 8,
+                          border: isPublished ? '1px solid #10b981' : '1px solid #3b82f6',
+                          background: isPublished ? '#ecfdf5' : '#eff6ff',
+                          color: isPublished ? '#10b981' : '#3b82f6',
+                          cursor: 'pointer',
+                          fontSize: 14,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {isPublished ? 'پیش‌نویس کردن' : 'منتشر کردن'}
                       </button>
-                    </Link>
-                    <Link href={`/page/${moduleKey}/${doc.id}`}>
-                      <button style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #94a3b8', background: 'white', cursor: 'pointer' }}>
-                        پیش‌نمایش
+                      <button
+                        onClick={() => handleDelete(doc.id, doc.title)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: 8,
+                          border: '1px solid #f87171',
+                          background: '#fef2f2',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          fontSize: 14,
+                          fontWeight: 500,
+                        }}
+                      >
+                        حذف
                       </button>
-                    </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

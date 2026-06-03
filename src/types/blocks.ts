@@ -28,7 +28,9 @@ export interface ContentDocument {
   contentType: ContentType;
   title: string;
   slug: string;
+  excerpt?: string;
   status: ContentStatus;
+  publishedAt?: string;
   blocks: BlockInstance[];
   createdAt?: string;
   updatedAt?: string;

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useEditorStore, setStorageKey } from '@/src/store/editor';
 import { getDocumentByKey } from '@/src/core/storage/documentStorage';
 import { getModuleConfig } from '@/src/modules/registry';
+import BlogMetadataEditor from './BlogMetadataEditor';
 import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
 
 const isValidContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
@@ -55,6 +56,7 @@ export default function BuilderEditor({
   const deleteBlock = useEditorStore((s) => s.deleteBlock);
   const moveBlockUp = useEditorStore((s) => s.moveBlockUp);
   const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
+  const setPageMetadata = useEditorStore((s) => s.setPageMetadata);
 
   const availableBlocks = listBlocks().filter((block) => allowedBlocks.includes(block.type));
 
@@ -83,6 +85,11 @@ export default function BuilderEditor({
   };
 
   const moduleConfig = getModuleConfig(page.contentType);
+  const previewHref = `/page/${moduleConfig.moduleKey}/${page.id}`;
+  const publishedHref =
+    moduleConfig.moduleKey === 'blog' && page.status === 'published' && page.slug
+      ? `/blog/${page.slug}`
+      : null;
 
   return (
     <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
@@ -90,9 +97,16 @@ export default function BuilderEditor({
         <Link href={moduleConfig.adminPath}>
           <Button variant="outline">بازگشت به لیست</Button>
         </Link>
-        <Link href={`/page/${moduleConfig.moduleKey}/${page.id}`}>
+        <Link href={previewHref}>
           <Button variant="outline">مشاهده پیش‌نمایش</Button>
         </Link>
+        {publishedHref ? (
+          <Link href={publishedHref}>
+            <Button variant="outline">مشاهده صفحه منتشرشده</Button>
+          </Link>
+        ) : moduleConfig.moduleKey === 'blog' ? (
+          <Button variant="outline" disabled>برای مشاهده عمومی، ابتدا پست را منتشر کنید</Button>
+        ) : null}
       </div>
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
@@ -239,17 +253,36 @@ export default function BuilderEditor({
         </div>
 
         <aside style={{ width: 340, padding: 12, borderRight: '1px solid #eee' }}>
-          <h3 style={{ marginTop: 0 }}>ویرایش بلاک</h3>
+          {page.contentType === 'blogPost' && (
+            <>
+              <h3 style={{ marginTop: 0, marginBottom: 16 }}>تنظیمات پست</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
+                تغییرات به‌صورت خودکار ذخیره می‌شوند
+              </p>
+              <BlogMetadataEditor
+                title={page.title}
+                slug={page.slug}
+                excerpt={page.excerpt}
+                status={page.status === 'published' ? 'published' : 'draft'}
+                onUpdate={(data) => setPageMetadata(data)}
+              />
+              <div style={{ margin: '20px 0', borderTop: '1px solid #eee' }} />
+            </>
+          )}
 
-          {(() => {
-            const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
-            if (selectedBlock) {
-              const def = getBlock(selectedBlock.type);
-              if (!def || !def.editor) return <div>این بلاک قابلیت ویرایش ندارد.</div>;
-              return def.editor({ data: selectedBlock.data, onChange: (d: any) => updateBlock(selectedBlock.id, d) });
-            }
-            return <div>هیچ بلاکی انتخاب نشده است. روی یک بلاک کلیک کنید.</div>;
-          })()}
+          <>
+            <h3 style={{ marginTop: 0 }}>ویرایش بلاک</h3>
+
+            {(() => {
+              const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
+              if (selectedBlock) {
+                const def = getBlock(selectedBlock.type);
+                if (!def || !def.editor) return <div>این بلاک قابلیت ویرایش ندارد.</div>;
+                return def.editor({ data: selectedBlock.data, onChange: (d: any) => updateBlock(selectedBlock.id, d) });
+              }
+              return <div>هیچ بلاکی انتخاب نشده است. روی یک بلاک کلیک کنید.</div>;
+            })()}
+          </>
         </aside>
       </div>
     </div>
