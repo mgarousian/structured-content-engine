@@ -1,25 +1,61 @@
 "use client";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../../../src/blocks/heading'; // ensure heading block registers itself
 import '../../../src/blocks/paragraph'; // ensure paragraph block registers itself
-import { getBlock } from '../../../src/blocks/registry';
+import { getBlock, listBlocks } from '../../../src/blocks/registry';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useEditorStore, loadPageFromStorage } from '../../../src/store/editor';
 
 export default function Page() {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const page = useEditorStore((s) => s.page);
   const blocks = page?.blocks ?? [];
   const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const updateBlock = useEditorStore((s) => s.updateBlock);
+  const addBlock = useEditorStore((s) => s.addBlock);
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
+  const availableBlocks = listBlocks().filter((block) => block.type === 'heading' || block.type === 'paragraph');
 
   useEffect(() => {
     loadPageFromStorage();
   }, []);
 
+  const handleAddBlock = (type: string) => {
+    const def = getBlock(type);
+    if (!def) return;
+    addBlock(type, def.defaultData);
+    setPickerOpen(false);
+  };
+
   return (
     <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+          <DialogTrigger asChild>
+            <Button>+ افزودن بلوک</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogTitle>افزودن بلاک جدید</DialogTitle>
+            <DialogDescription>یک نوع بلاک را انتخاب کنید تا به صفحه اضافه شود.</DialogDescription>
+            <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+              {availableBlocks.map((block) => (
+                <Button
+                  key={block.type}
+                  variant="outline"
+                  className="w-full justify-between"
+                  onClick={() => handleAddBlock(block.type)}
+                >
+                  {block.label}
+                  <span style={{ opacity: 0.7 }}>{block.type}</span>
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ flex: 1 }}>
           {blocks.map((b) => {

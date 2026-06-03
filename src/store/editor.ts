@@ -8,6 +8,7 @@ type EditorStore = {
   selectedBlockId: string | null;
   selectBlock: (id: string | null) => void;
   updateBlock: (id: string, data: any) => void;
+  addBlock: (type: string, data: any) => void;
   setPage: (p: Page) => void;
 };
 
@@ -63,6 +64,11 @@ const savePageToStorage = (page: Page) => {
   }
 };
 
+const createBlockId = () =>
+  `block-${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+
 export const useEditorStore = create<EditorStore>((set) => ({
   page: initialPage,
   selectedBlockId: null,
@@ -75,6 +81,20 @@ export const useEditorStore = create<EditorStore>((set) => ({
       };
       savePageToStorage(nextPage);
       return { page: nextPage };
+    }),
+  addBlock: (type, data) =>
+    set((state) => {
+      const newBlock = {
+        id: createBlockId(),
+        type,
+        data,
+      };
+      const nextPage: Page = {
+        ...state.page,
+        blocks: [...state.page.blocks, newBlock],
+      };
+      savePageToStorage(nextPage);
+      return { page: nextPage, selectedBlockId: newBlock.id };
     }),
   setPage: (p) => {
     savePageToStorage(p);
