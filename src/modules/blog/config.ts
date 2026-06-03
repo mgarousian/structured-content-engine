@@ -15,13 +15,26 @@ const defaultDocument: ContentDocument = {
   ],
 };
 
+const createDefaultDocument = (id: string): ContentDocument => ({
+  ...defaultDocument,
+  id: `blog-${id}`,
+  slug: id,
+  blocks: defaultDocument.blocks.map((block) => ({
+    ...block,
+    data: { ...block.data },
+  })),
+});
+
 const config: ModuleConfig = {
+  moduleKey: 'blog',
   contentType: 'blogPost' as ContentType,
   label: 'Blog Post',
+  persianLabel: 'پست بلاگ',
   labelFa: 'پست بلاگ',
   allowedBlocks: ['heading', 'paragraph', 'image'],
   storageKey: 'page-builder:mvp:blog-demo',
   defaultDocument,
+  createDefaultDocument,
 };
 
 export default config;

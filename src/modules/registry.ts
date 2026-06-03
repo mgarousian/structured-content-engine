@@ -4,20 +4,38 @@ import landingConfig from './landing/config';
 
 import type { ContentDocument } from '../types/blocks';
 
+export type ModuleKey = 'blog' | 'landing';
+
 export type ModuleConfig = {
+  moduleKey: ModuleKey;
   contentType: ContentType;
   label: string;
+  persianLabel: string;
   labelFa: string;
   allowedBlocks: string[];
   storageKey: string;
   defaultDocument: ContentDocument;
+  createDefaultDocument: (id: string) => ContentDocument;
 };
 
-const configs: Record<ContentType, ModuleConfig> = {
+const moduleConfigs: Record<ModuleKey, ModuleConfig> = {
+  blog: blogConfig,
+  landing: landingConfig,
+};
+
+const configsByContentType: Record<ContentType, ModuleConfig> = {
   blogPost: blogConfig,
   landingPage: landingConfig,
 };
 
-export const getModuleConfig = (contentType: ContentType): ModuleConfig => configs[contentType];
+export const getModuleConfigByKey = (moduleKey: string): ModuleConfig | undefined => {
+  const normalized = moduleKey.toLowerCase();
+  if (!isModuleKey(normalized)) return undefined;
+  return moduleConfigs[normalized];
+};
 
-export default configs;
+export const getModuleConfig = (contentType: ContentType): ModuleConfig => configsByContentType[contentType];
+
+export const isModuleKey = (value: any): value is ModuleKey => value === 'blog' || value === 'landing';
+
+export default configsByContentType;

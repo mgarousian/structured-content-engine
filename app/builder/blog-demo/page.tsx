@@ -1,7 +1,5 @@
-import React from 'react';
-import BuilderEditor from '@/src/components/BuilderEditor';
-import blogConfig from '@/src/modules/blog/config';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <BuilderEditor storageKey={blogConfig.storageKey} initialPage={blogConfig.defaultDocument} allowedBlocks={blogConfig.allowedBlocks} />;
+  redirect('/builder/blog/demo');
 }

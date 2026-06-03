@@ -11,10 +11,11 @@ import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from 
 const isValidContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
 const isValidContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
 
-const isValidContentDocument = (page: any): page is ContentDocument => {
+const isValidContentDocument = (page: any, expectedContentType: string): page is ContentDocument => {
   if (!page || typeof page !== 'object') return false;
   if (typeof page.id !== 'string' || typeof page.slug !== 'string' || typeof page.title !== 'string') return false;
   if (!isValidContentType(page.contentType)) return false;
+  if (page.contentType !== expectedContentType) return false;
   if (!isValidContentStatus(page.status)) return false;
   if (!Array.isArray(page.blocks)) return false;
   return page.blocks.every((block: any) => {
@@ -71,7 +72,7 @@ export default function BuilderEditor({
 
     try {
       const parsed = JSON.parse(raw);
-      if (isValidContentDocument(parsed)) {
+      if (isValidContentDocument(parsed, initialPage.contentType)) {
         useEditorStore.getState().setPage(parsed);
       } else {
         useEditorStore.getState().setPage(initialPage);

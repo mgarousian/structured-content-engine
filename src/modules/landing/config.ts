@@ -25,13 +25,26 @@ const defaultDocument: ContentDocument = {
   ],
 };
 
+const createDefaultDocument = (id: string): ContentDocument => ({
+  ...defaultDocument,
+  id: `landing-${id}`,
+  slug: id,
+  blocks: defaultDocument.blocks.map((block) => ({
+    ...block,
+    data: { ...block.data },
+  })),
+});
+
 const config: ModuleConfig = {
+  moduleKey: 'landing',
   contentType: 'landingPage' as ContentType,
   label: 'Landing Page',
+  persianLabel: 'لندینگ‌پیج',
   labelFa: 'لندینگ‌پیج',
   allowedBlocks: ['heading', 'paragraph', 'image', 'hero'],
   storageKey: 'page-builder:mvp:landing-demo',
   defaultDocument,
+  createDefaultDocument,
 };
 
 export default config;
