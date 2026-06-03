@@ -7,11 +7,11 @@ import '../../../src/blocks/paragraph';
 import '../../../src/blocks/image';
 import { getBlock } from '../../../src/blocks/registry';
 import { Button } from '@/components/ui/button';
-import type { Page as PageType } from '../../../src/types/blocks';
+import type { ContentDocument } from '../../../src/types/blocks';
 
 const STORAGE_KEY = 'page-builder:mvp:demo';
 
-const parsePage = (value: string | null): PageType | null => {
+const parseContentDocument = (value: string | null): ContentDocument | null => {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value);
@@ -23,7 +23,7 @@ const parsePage = (value: string | null): PageType | null => {
       typeof parsed.title === 'string' &&
       Array.isArray(parsed.blocks)
     ) {
-      return parsed as PageType;
+      return parsed as ContentDocument;
     }
     return null;
   } catch {
@@ -32,12 +32,12 @@ const parsePage = (value: string | null): PageType | null => {
 };
 
 export default function DemoPage() {
-  const [page, setPage] = useState<PageType | null>(null);
+  const [page, setPage] = useState<ContentDocument | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = parsePage(raw);
+    const parsed = parseContentDocument(raw);
     setPage(parsed);
     setLoaded(true);
   }, []);

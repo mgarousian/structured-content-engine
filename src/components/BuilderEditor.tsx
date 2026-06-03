@@ -6,13 +6,17 @@ import { getBlock, listBlocks } from '@/src/blocks/registry';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useEditorStore, setStorageKey } from '@/src/store/editor';
-import type { BlockInstance, Page } from '@/src/types/blocks';
+import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
 
-const isValidPage = (page: any): page is Page => {
+const isValidContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
+const isValidContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
+
+const isValidContentDocument = (page: any): page is ContentDocument => {
   if (!page || typeof page !== 'object') return false;
   if (typeof page.id !== 'string' || typeof page.slug !== 'string' || typeof page.title !== 'string') return false;
+  if (!isValidContentType(page.contentType)) return false;
+  if (!isValidContentStatus(page.status)) return false;
   if (!Array.isArray(page.blocks)) return false;
-  if (page.contentType && typeof page.contentType !== 'string') return false;
   return page.blocks.every((block: any) => {
     return (
       block &&
@@ -32,7 +36,7 @@ export default function BuilderEditor({
   allowedBlocks,
 }: {
   storageKey: string;
-  initialPage: Page;
+  initialPage: ContentDocument;
   allowedBlocks: string[];
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -67,7 +71,7 @@ export default function BuilderEditor({
 
     try {
       const parsed = JSON.parse(raw);
-      if (isValidPage(parsed)) {
+      if (isValidContentDocument(parsed)) {
         useEditorStore.getState().setPage(parsed);
       } else {
         useEditorStore.getState().setPage(initialPage);

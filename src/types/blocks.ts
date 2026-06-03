@@ -17,15 +17,20 @@ export interface BlockInstance<Data = any> {
 }
 
 export type ContentType = 'blogPost' | 'landingPage';
+export type ContentStatus = 'draft' | 'review' | 'scheduled' | 'published';
 
-export interface Page {
+export interface ContentDocument {
   id: string;
-  slug: string;
+  contentType: ContentType;
   title: string;
-  contentType?: ContentType;
+  slug: string;
+  status: ContentStatus;
   blocks: BlockInstance[];
-  meta?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export type Page = ContentDocument;
 
 export type BlockRegistryMap = Record<BlockType, BlockDefinition<any>>;
 

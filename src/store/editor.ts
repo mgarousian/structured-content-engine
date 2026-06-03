@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Page, BlockInstance } from '../types/blocks';
+import { ContentDocument, ContentType, ContentStatus, BlockInstance } from '../types/blocks';
 
 let STORAGE_KEY = 'page-builder:mvp:demo';
 
@@ -8,7 +8,7 @@ export const setStorageKey = (key: string) => {
 };
 
 type EditorStore = {
-  page: Page;
+  page: ContentDocument;
   selectedBlockId: string | null;
   selectBlock: (id: string | null) => void;
   updateBlock: (id: string, data: any) => void;
@@ -17,13 +17,15 @@ type EditorStore = {
   deleteBlock: (id: string) => void;
   moveBlockUp: (id: string) => void;
   moveBlockDown: (id: string) => void;
-  setPage: (p: Page) => void;
+  setPage: (p: ContentDocument) => void;
 };
 
-const initialPage: Page = {
+const initialPage: ContentDocument = {
   id: 'demo-page-1',
   slug: 'demo',
   title: 'صفحه نمونه',
+  contentType: 'blogPost',
+  status: 'draft',
   blocks: [
     {
       id: 'block-1',
@@ -43,7 +45,10 @@ const initialPage: Page = {
   ],
 };
 
-const parseStoredPage = (value: string | null): Page | null => {
+const isContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
+const isContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
+
+const parseStoredPage = (value: string | null): ContentDocument | null => {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value);
@@ -53,9 +58,13 @@ const parseStoredPage = (value: string | null): Page | null => {
       typeof parsed.id === 'string' &&
       typeof parsed.slug === 'string' &&
       typeof parsed.title === 'string' &&
+      typeof parsed.contentType === 'string' &&
+      isContentType(parsed.contentType) &&
+      typeof parsed.status === 'string' &&
+      isContentStatus(parsed.status) &&
       Array.isArray(parsed.blocks)
     ) {
-      return parsed as Page;
+      return parsed as ContentDocument;
     }
     return null;
   } catch {
@@ -63,7 +72,7 @@ const parseStoredPage = (value: string | null): Page | null => {
   }
 };
 
-const savePageToStorage = (page: Page) => {
+const savePageToStorage = (page: ContentDocument) => {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(page));
@@ -83,7 +92,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   selectBlock: (id) => set(() => ({ selectedBlockId: id })),
   updateBlock: (id, data) =>
     set((state) => {
-      const nextPage: Page = {
+      const nextPage: ContentDocument = {
         ...state.page,
         blocks: state.page.blocks.map((b: BlockInstance) => (b.id === id ? { ...b, data } : b)),
       };
@@ -97,7 +106,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
         type,
         data,
       };
-      const nextPage: Page = {
+      const nextPage: ContentDocument = {
         ...state.page,
         blocks: [...state.page.blocks, newBlock],
       };
@@ -114,7 +123,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       const nextBlocks = [...state.page.blocks];
       const insertIndex = Math.max(0, Math.min(index, nextBlocks.length));
       nextBlocks.splice(insertIndex, 0, newBlock);
-      const nextPage: Page = {
+      const nextPage: ContentDocument = {
         ...state.page,
         blocks: nextBlocks,
       };
@@ -123,7 +132,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     }),
   deleteBlock: (id) =>
     set((state) => {
-      const nextPage: Page = {
+      const nextPage: ContentDocument = {
         ...state.page,
         blocks: state.page.blocks.filter((b: BlockInstance) => b.id !== id),
       };
@@ -141,7 +150,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       const tmp = nextBlocks[idx - 1];
       nextBlocks[idx - 1] = nextBlocks[idx];
       nextBlocks[idx] = tmp;
-      const nextPage: Page = { ...state.page, blocks: nextBlocks };
+      const nextPage: ContentDocument = { ...state.page, blocks: nextBlocks };
       savePageToStorage(nextPage);
       return { page: nextPage };
     }),
@@ -153,7 +162,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       const tmp = nextBlocks[idx + 1];
       nextBlocks[idx + 1] = nextBlocks[idx];
       nextBlocks[idx] = tmp;
-      const nextPage: Page = { ...state.page, blocks: nextBlocks };
+      const nextPage: ContentDocument = { ...state.page, blocks: nextBlocks };
       savePageToStorage(nextPage);
       return { page: nextPage };
     }),
