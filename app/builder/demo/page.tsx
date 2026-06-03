@@ -1,23 +1,28 @@
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
 import '../../../src/blocks/heading'; // ensure heading block registers itself
 import '../../../src/blocks/paragraph'; // ensure paragraph block registers itself
 import { getBlock } from '../../../src/blocks/registry';
-import { useEditorStore } from '../../../src/store/editor';
+import { useEditorStore, loadPageFromStorage } from '../../../src/store/editor';
 
 export default function Page() {
   const page = useEditorStore((s) => s.page);
+  const blocks = page?.blocks ?? [];
   const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const selectBlock = useEditorStore((s) => s.selectBlock);
   const updateBlock = useEditorStore((s) => s.updateBlock);
 
-  const selectedBlock = page.blocks.find((b) => b.id === selectedBlockId) || null;
+  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
+
+  useEffect(() => {
+    loadPageFromStorage();
+  }, []);
 
   return (
     <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ flex: 1 }}>
-          {page.blocks.map((b) => {
+          {blocks.map((b) => {
             const def = getBlock(b.type);
             if (!def || !def.renderer) {
               return (

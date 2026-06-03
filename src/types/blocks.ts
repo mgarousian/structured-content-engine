@@ -18,7 +18,8 @@ export interface BlockInstance<Data = any> {
 
 export interface Page {
   id: string;
-  title?: string;
+  slug: string;
+  title: string;
   blocks: BlockInstance[];
   meta?: Record<string, any>;
 }

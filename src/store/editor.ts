@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Page, BlockInstance } from '../types/blocks';
 
+const STORAGE_KEY = 'page-builder:mvp:demo';
+
 type EditorStore = {
   page: Page;
   selectedBlockId: string | null;
@@ -11,6 +13,7 @@ type EditorStore = {
 
 const initialPage: Page = {
   id: 'demo-page-1',
+  slug: 'demo',
   title: 'صفحه نمونه',
   blocks: [
     {
@@ -31,18 +34,61 @@ const initialPage: Page = {
   ],
 };
 
+const parseStoredPage = (value: string | null): Page | null => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      typeof parsed.id === 'string' &&
+      typeof parsed.slug === 'string' &&
+      typeof parsed.title === 'string' &&
+      Array.isArray(parsed.blocks)
+    ) {
+      return parsed as Page;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const savePageToStorage = (page: Page) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(page));
+  } catch {
+    // ignore write errors
+  }
+};
+
 export const useEditorStore = create<EditorStore>((set) => ({
   page: initialPage,
   selectedBlockId: null,
   selectBlock: (id) => set(() => ({ selectedBlockId: id })),
   updateBlock: (id, data) =>
-    set((state) => ({
-      page: {
+    set((state) => {
+      const nextPage: Page = {
         ...state.page,
         blocks: state.page.blocks.map((b: BlockInstance) => (b.id === id ? { ...b, data } : b)),
-      },
-    })),
-  setPage: (p) => set(() => ({ page: p })),
+      };
+      savePageToStorage(nextPage);
+      return { page: nextPage };
+    }),
+  setPage: (p) => {
+    savePageToStorage(p);
+    return set(() => ({ page: p }));
+  },
 }));
+
+export const loadPageFromStorage = () => {
+  if (typeof window === 'undefined') return;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  const page = parseStoredPage(stored);
+  if (page) {
+    useEditorStore.getState().setPage(page);
+  }
+};
 
 export default useEditorStore;
