@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import '../../../src/blocks/heading'; // ensure heading block registers itself
 import '../../../src/blocks/paragraph'; // ensure paragraph block registers itself
 import { getBlock, listBlocks } from '../../../src/blocks/registry';
@@ -112,7 +113,10 @@ export default function Page() {
 
   return (
     <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <Link href="/page/demo">
+          <Button variant="outline">مشاهده پیش‌نمایش</Button>
+        </Link>
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
           <DialogTrigger asChild>
             <Button>+ افزودن بلوک</Button>
