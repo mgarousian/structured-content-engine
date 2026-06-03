@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Page, BlockInstance } from '../types/blocks';
-import { arrayMove } from '@dnd-kit/sortable';
 
 const STORAGE_KEY = 'page-builder:mvp:demo';
 
@@ -11,7 +10,8 @@ type EditorStore = {
   updateBlock: (id: string, data: any) => void;
   addBlock: (type: string, data: any) => void;
   deleteBlock: (id: string) => void;
-  reorderBlocks: (activeId: string, overId: string) => void;
+  moveBlockUp: (id: string) => void;
+  moveBlockDown: (id: string) => void;
   setPage: (p: Page) => void;
 };
 
@@ -111,18 +111,27 @@ export const useEditorStore = create<EditorStore>((set) => ({
         selectedBlockId: state.selectedBlockId === id ? null : state.selectedBlockId,
       };
     }),
-  reorderBlocks: (activeId, overId) =>
+  moveBlockUp: (id) =>
     set((state) => {
-      const activeIndex = state.page.blocks.findIndex((block: BlockInstance) => block.id === activeId);
-      const overIndex = state.page.blocks.findIndex((block: BlockInstance) => block.id === overId);
-      if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) {
-        return state;
-      }
-      const nextBlocks = arrayMove(state.page.blocks, activeIndex, overIndex);
-      const nextPage: Page = {
-        ...state.page,
-        blocks: nextBlocks,
-      };
+      const idx = state.page.blocks.findIndex((b: BlockInstance) => b.id === id);
+      if (idx <= 0) return state;
+      const nextBlocks = [...state.page.blocks];
+      const tmp = nextBlocks[idx - 1];
+      nextBlocks[idx - 1] = nextBlocks[idx];
+      nextBlocks[idx] = tmp;
+      const nextPage: Page = { ...state.page, blocks: nextBlocks };
+      savePageToStorage(nextPage);
+      return { page: nextPage };
+    }),
+  moveBlockDown: (id) =>
+    set((state) => {
+      const idx = state.page.blocks.findIndex((b: BlockInstance) => b.id === id);
+      if (idx < 0 || idx >= state.page.blocks.length - 1) return state;
+      const nextBlocks = [...state.page.blocks];
+      const tmp = nextBlocks[idx + 1];
+      nextBlocks[idx + 1] = nextBlocks[idx];
+      nextBlocks[idx] = tmp;
+      const nextPage: Page = { ...state.page, blocks: nextBlocks };
       savePageToStorage(nextPage);
       return { page: nextPage };
     }),
