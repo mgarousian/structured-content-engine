@@ -12,7 +12,7 @@ import { getBlogDocument } from '@/src/modules/blog/api/client';
 import BlogMetadataEditor from './BlogMetadataEditor';
 import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
 
-const isValidContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
+const isValidContentType = (value: any): value is ContentType => value === 'blogPost';
 const isValidContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
 
 const isValidContentDocument = (page: any, expectedContentType: string): page is ContentDocument => {

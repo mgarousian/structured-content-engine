@@ -13,7 +13,7 @@ const paragraphBlock: BlockDefinition<ParagraphData> = {
   label: 'پاراگراف',
   persianLabel: 'پاراگراف',
   description: 'متنی قابل ویرایش را به صفحه اضافه می‌کند.',
-  availableFor: ['blogPost', 'landingPage'],
+  availableFor: ['blogPost'],
   source: 'core',
   defaultData: {
     text: 'این یک پاراگراف نمونه برای محتوای صفحه است.',

@@ -20,7 +20,7 @@ export interface BlockInstance<Data = any> {
   data: Data;
 }
 
-export type ContentType = 'blogPost' | 'landingPage';
+export type ContentType = 'blogPost';
 export type ContentStatus = 'draft' | 'review' | 'scheduled' | 'published';
 
 export interface ContentDocument {

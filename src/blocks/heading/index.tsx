@@ -14,7 +14,7 @@ const headingBlock: BlockDefinition<HeadingData> = {
   label: 'عنوان',
   persianLabel: 'عنوان',
   description: 'یک عنوان اصلی برای صفحه یا مقاله ایجاد می‌کند.',
-  availableFor: ['blogPost', 'landingPage'],
+  availableFor: ['blogPost'],
   source: 'core',
   defaultData: {
     text: 'عنوان اصلی صفحه',

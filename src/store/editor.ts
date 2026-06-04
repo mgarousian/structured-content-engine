@@ -53,7 +53,7 @@ const initialPage: ContentDocument = {
   ],
 };
 
-const isContentType = (value: any): value is ContentType => value === 'blogPost' || value === 'landingPage';
+const isContentType = (value: any): value is ContentType => value === 'blogPost';
 const isContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
 
 const parseStoredPage = (value: string | null): ContentDocument | null => {

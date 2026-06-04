@@ -15,7 +15,7 @@ const imageBlock: BlockDefinition<ImageData> = {
   label: 'تصویر',
   persianLabel: 'تصویر',
   description: 'یک تصویر با متن جایگزین و کپشن برای صفحه اضافه می‌کند.',
-  availableFor: ['blogPost', 'landingPage'],
+  availableFor: ['blogPost'],
   source: 'core',
   defaultData: {
     src: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085',
