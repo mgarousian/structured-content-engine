@@ -55,11 +55,3 @@ export type ImageBlockData = {
   alt?: string;
   caption?: string;
 };
-
-export type HeroBlockData = {
-  title: string;
-  subtitle?: string;
-  primaryCtaText?: string;
-  primaryCtaHref?: string;
-  imageSrc?: string;
-};
