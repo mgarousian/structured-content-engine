@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import blogConfig from '@/src/modules/blog/config';
-import landingConfig from '@/src/modules/landing/config';
 
 const sections = [
   {
@@ -10,12 +9,6 @@ const sections = [
     description: 'مدیریت پست‌های بلاگ',
     path: blogConfig.adminPath,
     label: blogConfig.persianLabel,
-  },
-  {
-    title: 'لندینگ‌پیج',
-    description: 'مدیریت صفحات لندینگ',
-    path: landingConfig.adminPath,
-    label: landingConfig.persianLabel,
   },
 ];
 
