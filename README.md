@@ -1,103 +1,93 @@
 # Structured Content Engine
 
-A modular block-based content engine for building editable and publishable content.
+A blog-only structured content engine for creating, editing, storing, and rendering block-based blog content.
 
-The project uses one shared editor core for different content modules.
-Current modules:
-
-* Blog
-* Landing Page
-
-The goal is to avoid building separate editors for every product. Blog and Landing use the same core editor, renderer, storage layer, and block registry, but each module can define its own allowed blocks and workflow.
+The current branch focuses on Blog Storage v1 with file-based JSON storage and public blog rendering.
 
 ---
 
-## Current Branch
-
-```txt
-feature/content-type-modules
-```
-
-This branch adds module separation for Blog and Landing while keeping the editor core shared.
-
----
-
-## Core Features
+## Current Focus
 
 Implemented:
 
-* Shared block editor
-* Block registry
-* Blog module
-* Landing module
-* Module-specific allowed blocks
-* Dynamic builder routes
-* Dynamic preview routes
-* localStorage document storage
-* Admin list pages
-* RTL layout
-* Vazirmatn typography
+* Blog admin list and CRUD flow
+* Blog editor with structured blocks
+* File-based JSON storage
+* Public blog list page
+* Public blog detail pages
+* Controlled rendering from structured content
 
-Current blocks:
+Not included in this branch:
 
-* Heading
-* Paragraph
-* Image
-* Hero
+* Non-blog page implementation
+* AI pipeline
+* SaaS storage
+* Authentication
 
 ---
 
 ## Routes
 
-Admin entry:
+Admin:
 
 ```txt
 /admin
-```
-
-Module lists:
-
-```txt
 /admin/blog
-/admin/landing
 ```
 
 Builder:
 
 ```txt
 /builder/blog/:id
-/builder/landing/:id
 ```
 
 Preview:
 
 ```txt
 /page/blog/:id
-/page/landing/:id
+```
+
+Public blog:
+
+```txt
+/blog
+/blog/:slug
 ```
 
 ---
 
-## Module Rules
+## Storage
 
-### Blog
+Blog posts are stored as file-based JSON documents:
 
-Allowed blocks:
+```txt
+content/blog/*.json
+```
+
+This storage model is intended for local, static, and personal usage.
+
+---
+
+## Blocks
+
+Current blog blocks:
 
 * Heading
 * Paragraph
 * Image
 
-Hero is not available in Blog.
+The editor stores content as structured JSON blocks, not Markdown.
 
-### Landing
+---
 
-Allowed blocks:
+## Development Principles
 
-* Heading
-* Paragraph
-* Image
-* Hero
+* Content is represented as structured JSON blocks.
+* Rendering is controlled by the application.
+* File storage is the current persistence layer.
+* This branch does not include a landing-page implementation.
+* This branch does not include an AI pipeline.
+* This branch does not include SaaS storage or authentication.
 
 ---
 
@@ -125,42 +115,20 @@ http://localhost:3000/admin
 
 ## Test Flow
 
-Blog:
+Blog admin:
 
 ```txt
 /admin → Blog → Create New Blog Post → Edit → Preview
 ```
 
-Landing:
+Public blog:
 
 ```txt
-/admin → Landing → Create New Landing Page → Edit → Preview
+/blog → Blog Post Detail
 ```
 
 Expected:
 
-* Blog and Landing use the same editor core.
-* Each module shows only its allowed blocks.
-* Documents persist in localStorage.
-* Preview renders without editor UI.
-
----
-
-## Architecture Principle
-
-AI should not generate UI or code.
-
-AI should generate structured content.
-The core engine handles editing, rendering, validation, themes, and publishing.
-
----
-
-## Near-Term Roadmap
-
-* Stabilize admin navigation
-* Improve document list behavior
-* Add block metadata and categories
-* Improve Add Block modal organization
-* Add more Blog and Landing blocks
-* Define simple theme model
-* Define AI output contracts for Blog and Landing
+* Blog posts persist as JSON files under `content/blog`.
+* The editor uses structured blocks.
+* Preview and public pages render without editor UI.
