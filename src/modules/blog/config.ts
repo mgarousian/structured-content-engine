@@ -4,10 +4,10 @@ import { ContentType } from '../../types/blocks';
 import { generateSlug } from '../../core/utils/slug';
 
 const defaultDocument: ContentDocument = {
-  id: 'blog-demo-page-1',
+  id: 'default-blog-post',
   contentType: 'blogPost',
   title: 'پست نمونه بلاگ',
-  slug: 'blog-demo',
+  slug: 'default-blog-post',
   excerpt: 'خلاصه کوتاه درباره محتوای این پست.',
   status: 'draft',
   publishedAt: undefined,
@@ -41,7 +41,7 @@ const config: ModuleConfig = {
   persianLabel: 'پست بلاگ',
   labelFa: 'پست بلاگ',
   allowedBlocks: ['heading', 'paragraph', 'image'],
-  storageKey: 'page-builder:mvp:blog-demo',
+  storageKey: 'structured-content-engine:blog',
   adminPath: '/admin/blog',
   adminListLabel: 'لیست پست‌ها',
   defaultDocument,

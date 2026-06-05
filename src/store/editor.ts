@@ -3,7 +3,7 @@ import { getDocumentByKey, saveDocumentByKey } from '../core/storage/documentSto
 import { getBlogDocument, saveBlogDocument } from '../modules/blog/api/client';
 import { ContentDocument, ContentType, ContentStatus, BlockInstance } from '../types/blocks';
 
-let STORAGE_KEY = 'content-engine:doc:blog:demo';
+let STORAGE_KEY = 'structured-content-engine:doc:blog';
 
 export const setStorageKey = (key: string) => {
   STORAGE_KEY = key;
@@ -29,8 +29,8 @@ type EditorStore = {
 };
 
 const initialPage: ContentDocument = {
-  id: 'demo-page-1',
-  slug: 'demo',
+  id: 'default-blog-post',
+  slug: 'default-blog-post',
   title: 'صفحه نمونه',
   contentType: 'blogPost',
   status: 'draft',
