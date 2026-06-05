@@ -1,17 +1,14 @@
 import BuilderEditor from '@/src/components/BuilderEditor';
 import { getModuleConfigByKey } from '@/src/modules/registry';
 
-type PageProps = {
-  params: {
-    module: string;
-    id: string;
-  } | Promise<{
+type BuilderPageProps = {
+  params: Promise<{
     module: string;
     id: string;
   }>;
 };
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params }: BuilderPageProps) {
   const { module, id } = await params;
   const normalizedModule = module.toLowerCase();
   const config = getModuleConfigByKey(normalizedModule);

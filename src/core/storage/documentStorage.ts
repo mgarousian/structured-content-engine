@@ -53,7 +53,7 @@ export const saveDocumentByKey = (storageKey: string, document: ContentDocument)
   }
 };
 
-export const createDocument = (moduleKey: string, document: ContentDocument): ContentDocument | null => {
+export const createDocument = (moduleKey: ContentModule, document: ContentDocument): ContentDocument | null => {
   return saveDocument(moduleKey, document);
 };
 

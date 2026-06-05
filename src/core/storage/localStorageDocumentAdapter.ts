@@ -101,7 +101,7 @@ const removeIndexEntry = (moduleKey: ContentModule, id: string) => {
   saveIndex(moduleKey, entries);
 };
 
-export const localStorageDocumentAdapter: DocumentStorageAdapter = {
+export const localStorageDocumentAdapter = {
   listDocuments(moduleKey) {
     if (typeof window === 'undefined') return [];
     return parseIndex(localStorage.getItem(makeIndexKey(moduleKey)));
@@ -134,7 +134,7 @@ export const localStorageDocumentAdapter: DocumentStorageAdapter = {
       // ignore
     }
   },
-};
+} satisfies DocumentStorageAdapter;
 
 export const parseLocalStorageDocument = parseDocument;
 export const makeLocalStorageDocumentKey = makeDocumentKey;
