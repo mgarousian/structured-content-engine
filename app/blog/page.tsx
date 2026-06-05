@@ -1,6 +1,18 @@
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { listPublishedBlogSummaries } from '@/src/modules/blog/api/server';
 import type { DocumentMetadata } from '@/src/core/storage/documentStorage';
+
+const fallbackAuthorName = 'مسعود گروسیان';
+
+const formatPersianDate = (value?: string) => {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(value));
+};
 
 export default async function Page() {
   const posts: DocumentMetadata[] = (await listPublishedBlogSummaries()).sort((left, right) => {
@@ -10,51 +22,49 @@ export default async function Page() {
   });
 
   return (
-    <div dir="rtl" style={{ minHeight: '100vh', padding: 24, backgroundColor: '#f8fafc' }}>
-      <main style={{ margin: '0 auto', maxWidth: 700, textAlign: 'right' }}>
-        <div style={{ marginBottom: 40 }}>
-          <Link href="/">
-            <button style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #94a3b8', background: 'white', cursor: 'pointer' }}>
-              ← صفحه اصلی
-            </button>
-          </Link>
-        </div>
-
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ margin: 0, fontSize: 40, color: '#0f172a', fontWeight: 700 }}>بلاگ</h1>
-          <p style={{ margin: '8px 0 0', fontSize: 16, color: '#64748b' }}>
+    <div dir="rtl" className="min-h-screen bg-slate-50 px-6 py-6">
+      <main className="mx-auto max-w-3xl text-right">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">بلاگ</h1>
+          <p className="mt-2 text-base text-muted-foreground">
             آخرین نوشته‌ها و مقالات
           </p>
         </div>
 
         {posts.length === 0 ? (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 32, textAlign: 'center', color: '#64748b' }}>
+          <div className="rounded-2xl bg-white p-8 text-center text-muted-foreground shadow-sm">
             هنوز پستی منتشر نشده است.
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: 24 }}>
+          <div className="grid gap-6">
             {posts.map((post) => {
-              const pubDate = post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('fa-IR') : '—';
+              const displayDate = formatPersianDate(post.publishedAt ?? post.updatedAt);
+              const authorName =
+                ('authorName' in post && typeof post.authorName === 'string' && post.authorName) ||
+                ('author' in post && typeof post.author === 'string' && post.author) ||
+                fallbackAuthorName;
               return (
-                <Link key={post.slug} href={`/blog/${post.slug}`} style={{ textDecoration: 'none' }}>
-                  <article
-                    className="cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
-                    style={{
-                      boxShadow: '0 20px 50px rgba(15,23,42,0.08)',
-                    }}
-                  >
-                    <h2 style={{ margin: 0, fontSize: 22, color: '#0f172a', fontWeight: 600 }}>
+                <Link
+                  key={post.slug}
+                  href={`/blog/${post.slug}`}
+                  aria-label={`مشاهده پست ${post.title}`}
+                  className="block"
+                >
+                  <article className="cursor-pointer rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-md hover:shadow-black/5">
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      {authorName} | {displayDate}
+                    </p>
+                    <h2 className="text-xl font-semibold text-slate-900">
                       {post.title}
                     </h2>
                     {post.excerpt && (
-                      <p style={{ margin: '12px 0 16px', fontSize: 15, color: '#475569', lineHeight: 1.6 }}>
+                      <p className="mt-2 mb-5 text-base leading-relaxed text-slate-600">
                         {post.excerpt}
                       </p>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#64748b' }}>
-                      <span>{pubDate}</span>
-                      <span style={{ color: '#3b82f6' }}>ادامه خواندن →</span>
-                    </div>
+                    <Button className='cursor-pointer' style={{ backgroundColor: '#4182E4' }}>
+                      ادامه خواندن
+                    </Button>
                   </article>
                 </Link>
               );
