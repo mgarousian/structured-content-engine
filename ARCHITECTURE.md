@@ -107,21 +107,6 @@ API:
 
 ---
 
-## Out Of Scope
-
-The following are explicitly out of scope in the current branch:
-
-- Landing pages
-- Hero block
-- Beste UI or vendor-pattern integration
-- AI pipeline
-- SaaS storage
-- Authentication
-- Full admin platform
-- Slash-command editor
-
----
-
 ## Future Direction
 
 - The admin shell can later become reusable across multiple products.
