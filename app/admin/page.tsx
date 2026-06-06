@@ -1,42 +1,51 @@
-import Link from 'next/link';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import blogConfig from '@/src/modules/blog/config';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardDescription,
+  CardTitle,
+} from "@/components/ui/card";
+import AdminPageHeader from "@/src/components/admin/AdminPageHeader";
 
 const sections = [
   {
-    title: 'بلاگ',
-    description: 'مدیریت پست‌های بلاگ',
-    path: blogConfig.adminPath,
-    label: blogConfig.persianLabel,
+    title: "بلاگ",
+    description: "مدیریت پست‌های بلاگ",
+    path: "/admin/blog",
   },
 ];
 
 export default function Page() {
   return (
-    <div dir="rtl" style={{ minHeight: '100vh', padding: 24, backgroundColor: '#f8fafc' }}>
-      <main style={{ margin: '0 auto', maxWidth: 900, textAlign: 'right' }}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 32, color: '#0f172a' }}>پنل مدیریت</h1>
-          <p style={{ margin: '10px 0 0', color: '#475569' }}>به بخش مدیریت محتوا خوش آمدید.</p>
-        </div>
+    <div className="flex flex-1 flex-col gap-6">
+      <AdminPageHeader
+        title="داشبورد"
+        description="به بخش مدیریت محتوا خوش آمدید."
+      />
 
-        <div style={{ display: 'grid', gap: 16 }}>
-          {sections.map((section) => (
-            <Card key={section.path} style={{ padding: 20, borderRadius: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>{section.title}</h2>
-                  <p style={{ margin: '8px 0 0', color: '#475569' }}>{section.description}</p>
-                </div>
-                <Link href={section.path}>
-                  <Button>ورود</Button>
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </main>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {sections.map((section) => (
+          <Card key={section.path}>
+            <CardHeader>
+              <CardTitle>{section.title}</CardTitle>
+              <CardDescription>{section.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                ورود به بخش مدیریت ماژول.
+              </p>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button asChild>
+                <Link href={section.path}>ورود</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

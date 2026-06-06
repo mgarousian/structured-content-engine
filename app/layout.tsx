@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { vazirmatn } from "@/lib/fonts";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" className={`${vazirmatn.variable} h-full antialiased`}>
-      <body className={`${vazirmatn.className} min-h-full flex flex-col`}>{children}</body>
+      <body className={`${vazirmatn.className} min-h-full flex flex-col`}>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }
