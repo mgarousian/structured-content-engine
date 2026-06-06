@@ -1,16 +1,13 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import '@/src/blocks/registerBlocks';
-import { getBlock, listBlocks } from '@/src/blocks/registry';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { getBlock } from '@/src/blocks/registry';
 import { useEditorStore, setStorageKey } from '@/src/store/editor';
 import { getDocumentByKey } from '@/src/core/storage/documentStorage';
-import { getModuleConfig } from '@/src/modules/registry';
 import { getBlogDocument } from '@/src/modules/blog/api/client';
 import BlogMetadataEditor from './BlogMetadataEditor';
 import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
+import { cn } from '@/lib/utils';
 
 const isValidContentType = (value: any): value is ContentType => value === 'blogPost';
 const isValidContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
@@ -35,6 +32,10 @@ const isValidContentDocument = (page: any, expectedContentType: string): page is
   });
 };
 
+type ParagraphData = {
+  text: string;
+};
+
 export default function BuilderEditor({
   storageKey,
   initialPage,
@@ -44,22 +45,19 @@ export default function BuilderEditor({
   initialPage: ContentDocument;
   allowedBlocks: string[];
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pendingInsertIndex, setPendingInsertIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
   const storePage = useEditorStore((s) => s.page);
   const page = mounted ? storePage : initialPage;
   const blocks = page?.blocks ?? [];
-  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
-  const selectBlock = useEditorStore((s) => s.selectBlock);
   const updateBlock = useEditorStore((s) => s.updateBlock);
   const addBlockAt = useEditorStore((s) => s.addBlockAt);
   const deleteBlock = useEditorStore((s) => s.deleteBlock);
-  const moveBlockUp = useEditorStore((s) => s.moveBlockUp);
-  const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
+  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const setPageMetadata = useEditorStore((s) => s.setPageMetadata);
-
-  const availableBlocks = listBlocks().filter((block) => allowedBlocks.includes(block.type));
+  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const pendingFocusBlockId = useRef<string | null>(null);
+  const focusSelectedBlockOnNextRender = useRef(false);
+  const pendingCaretPosition = useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -85,193 +83,78 @@ export default function BuilderEditor({
     }
   }, [storageKey, initialPage]);
 
-  const openPickerForIndex = (index: number) => {
-    setPendingInsertIndex(index);
-    setPickerOpen(true);
+  const paragraphBlocks = useMemo(
+    () => blocks.filter((block) => block.type === 'paragraph'),
+    [blocks]
+  );
+
+  useEffect(() => {
+    if (!mounted || !page || paragraphBlocks.length > 0) return;
+    const paragraphDefinition = getBlock('paragraph');
+    if (!paragraphDefinition || !allowedBlocks.includes('paragraph')) return;
+    focusSelectedBlockOnNextRender.current = true;
+    pendingCaretPosition.current = 0;
+    addBlockAt('paragraph', { ...paragraphDefinition.defaultData, text: '' }, blocks.length);
+  }, [mounted, page, paragraphBlocks.length, allowedBlocks, addBlockAt, blocks.length]);
+
+  useEffect(() => {
+    paragraphBlocks.forEach((block) => {
+      const textarea = textareaRefs.current[block.id];
+      if (!textarea) return;
+      textarea.style.height = '0px';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    });
+  }, [paragraphBlocks]);
+
+  useEffect(() => {
+    const targetBlockId = focusSelectedBlockOnNextRender.current ? selectedBlockId : pendingFocusBlockId.current;
+    if (!targetBlockId) return;
+    const target = textareaRefs.current[targetBlockId];
+    if (!target) return;
+    target.focus();
+    const position = pendingCaretPosition.current;
+    if (typeof position === 'number') {
+      target.setSelectionRange(position, position);
+    }
+    focusSelectedBlockOnNextRender.current = false;
+    pendingFocusBlockId.current = null;
+    pendingCaretPosition.current = null;
+  }, [paragraphBlocks, selectedBlockId]);
+
+  const getParagraphText = (block: BlockInstance) =>
+    typeof (block.data as { text?: unknown }).text === 'string'
+      ? ((block.data as ParagraphData).text ?? '')
+      : '';
+
+  const resizeTextarea = (textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return;
+    textarea.style.height = '0px';
+    textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
-  const handleAddBlock = (type: string) => {
-    const def = getBlock(type);
-    if (!def) return;
-    addBlockAt(type, def.defaultData, pendingInsertIndex);
-    setPickerOpen(false);
+  const focusParagraphByRelativeIndex = (currentIndex: number, direction: -1 | 1) => {
+    const targetBlock = paragraphBlocks[currentIndex + direction];
+    if (!targetBlock) return;
+    pendingFocusBlockId.current = targetBlock.id;
+    pendingCaretPosition.current = getParagraphText(targetBlock).length;
   };
 
-  const moduleConfig = getModuleConfig(page.contentType);
-  const previewHref = `/page/${moduleConfig.moduleKey}/${page.id}`;
-  const publishedHref =
-    moduleConfig.moduleKey === 'blog' && page.status === 'published' && page.slug
-      ? `/blog/${page.slug}`
-      : null;
+  const createEmptyParagraph = (insertIndex: number) => {
+    const paragraphDefinition = getBlock('paragraph');
+    if (!paragraphDefinition) return;
+    focusSelectedBlockOnNextRender.current = true;
+    pendingCaretPosition.current = 0;
+    addBlockAt('paragraph', { ...paragraphDefinition.defaultData, text: '' }, insertIndex);
+  };
 
   return (
-    <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        <Link href={moduleConfig.adminPath}>
-          <Button variant="outline">بازگشت به لیست</Button>
-        </Link>
-        <Link href={previewHref}>
-          <Button variant="outline">مشاهده پیش‌نمایش</Button>
-        </Link>
-        {publishedHref ? (
-          <Link href={publishedHref}>
-            <Button variant="outline">مشاهده صفحه منتشرشده</Button>
-          </Link>
-        ) : moduleConfig.moduleKey === 'blog' ? (
-          <Button variant="outline" disabled>برای مشاهده عمومی، ابتدا پست را منتشر کنید</Button>
-        ) : null}
-      </div>
-
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent>
-          <DialogTitle>افزودن بلاک جدید</DialogTitle>
-          <DialogDescription>یک نوع بلاک را انتخاب کنید تا به صفحه اضافه شود.</DialogDescription>
-          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
-            {availableBlocks.map((block) => (
-              <Button
-                key={block.type}
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddBlock(block.type)}
-              >
-                {block.label}
-                <span style={{ opacity: 0.7 }}>{block.type}</span>
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <div style={{ display: 'flex', gap: 20 }}>
-        <div style={{ flex: 1 }}>
-          {blocks.length === 0 ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 240,
-                padding: 24,
-                border: '1px solid #eee',
-                borderRadius: 8,
-                color: '#555',
-              }}
-            >
-              <div style={{ marginBottom: 16 }}>صفحه خالی است</div>
-              <Button variant="outline" onClick={() => openPickerForIndex(0)}>
-                + افزودن اولین بلوک
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div style={{ marginBottom: 12 }}>
-                <Button
-                  variant="outline"
-                  className="w-full justify-center"
-                  onClick={() => openPickerForIndex(0)}
-                >
-                  + افزودن بلوک
-                </Button>
-              </div>
-              {blocks.map((b, idx) => {
-                const def = getBlock(b.type);
-                if (!def || !def.renderer) {
-                  return (
-                    <React.Fragment key={b.id}>
-                      <div style={{ padding: 12, border: '1px solid #eee', marginBottom: 12 }}>
-                        بلاک ناشناخته: {b.type}
-                      </div>
-                      <div style={{ marginBottom: 12 }}>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-center"
-                          onClick={() => openPickerForIndex(idx + 1)}
-                        >
-                          + افزودن بلوک
-                        </Button>
-                      </div>
-                    </React.Fragment>
-                  );
-                }
-
-                return (
-                  <React.Fragment key={b.id}>
-                    <div
-                      onClick={() => selectBlock(b.id)}
-                      style={{
-                        padding: 12,
-                        border: selectedBlockId === b.id ? '2px solid #3b82f6' : '1px solid #eee',
-                        borderRadius: 8,
-                        marginBottom: 12,
-                        cursor: 'pointer',
-                        backgroundColor: '#fff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <strong>{def.label}</strong>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveBlockUp(b.id);
-                            }}
-                            disabled={idx <= 0}
-                          >
-                            بالا
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveBlockDown(b.id);
-                            }}
-                            disabled={idx >= blocks.length - 1}
-                          >
-                            پایین
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              deleteBlock(b.id);
-                            }}
-                          >
-                            حذف
-                          </Button>
-                        </div>
-                      </div>
-
-                      {def.renderer ? def.renderer(b.data) : null}
-                    </div>
-
-                    <div style={{ marginBottom: 12 }}>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-center"
-                        onClick={() => openPickerForIndex(idx + 1)}
-                      >
-                        + افزودن بلوک
-                      </Button>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </>
-          )}
-        </div>
-
-        <aside style={{ width: 340, padding: 12, borderRight: '1px solid #eee' }}>
+    <div dir="rtl" className="min-h-screen bg-muted/30 text-right">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 p-6 lg:flex-row">
+        <aside className="w-full shrink-0 self-start rounded-2xl border border-border bg-background p-5 lg:sticky lg:top-6 lg:w-80 lg:overflow-y-auto">
           {page.contentType === 'blogPost' && (
             <>
-              <h3 style={{ marginTop: 0, marginBottom: 16 }}>تنظیمات پست</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
-                تغییرات به‌صورت خودکار ذخیره می‌شوند
-              </p>
+              <h3 className="mb-4 text-lg font-semibold">تنظیمات پست</h3>
+              <p className="mb-4 text-sm text-muted-foreground">تغییرات به‌صورت خودکار ذخیره می‌شوند</p>
               <BlogMetadataEditor
                 title={page.title}
                 slug={page.slug}
@@ -279,24 +162,58 @@ export default function BuilderEditor({
                 status={page.status === 'published' ? 'published' : 'draft'}
                 onUpdate={(data) => setPageMetadata(data)}
               />
-              <div style={{ margin: '20px 0', borderTop: '1px solid #eee' }} />
+              <div className="my-5 border-t border-border" />
             </>
           )}
-
-          <>
-            <h3 style={{ marginTop: 0 }}>ویرایش بلاک</h3>
-
-            {(() => {
-              const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
-              if (selectedBlock) {
-                const def = getBlock(selectedBlock.type);
-                if (!def || !def.editor) return <div>این بلاک قابلیت ویرایش ندارد.</div>;
-                return def.editor({ data: selectedBlock.data, onChange: (d: any) => updateBlock(selectedBlock.id, d) });
-              }
-              return <div>هیچ بلاکی انتخاب نشده است. روی یک بلاک کلیک کنید.</div>;
-            })()}
-          </>
         </aside>
+
+        <section className="flex flex-1 justify-center px-6 py-10 sm:px-8 lg:px-12">
+          <div className="flex w-full max-w-[600px] flex-col gap-3">
+            {paragraphBlocks.map((block, index) => {
+              const text = getParagraphText(block);
+
+              return (
+                <textarea
+                  key={block.id}
+                  ref={(node) => {
+                    textareaRefs.current[block.id] = node;
+                    resizeTextarea(node);
+                  }}
+                  value={text}
+                  onChange={(event) => {
+                    updateBlock(block.id, {
+                      ...(block.data as Record<string, unknown>),
+                      text: event.target.value,
+                    });
+                    resizeTextarea(event.target);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      const currentIndex = blocks.findIndex((candidate) => candidate.id === block.id);
+                      if (currentIndex < 0) return;
+                      createEmptyParagraph(currentIndex + 1);
+                      return;
+                    }
+
+                    if (event.key === 'Backspace' && text === '' && paragraphBlocks.length > 1 && index > 0) {
+                      event.preventDefault();
+                      focusParagraphByRelativeIndex(index, -1);
+                      deleteBlock(block.id);
+                    }
+                  }}
+                  placeholder={index === 0 ? 'شروع به نوشتن کنید...' : ''}
+                  rows={1}
+                  className={cn(
+                    'block w-full min-h-0 resize-none overflow-hidden rounded-lg border border-transparent bg-transparent px-3 py-3 text-base leading-8 outline-none shadow-none transition-colors placeholder:text-muted-foreground',
+                    'hover:border-border/80 hover:ring-2 hover:ring-border/40',
+                    'focus:border-border focus:ring-2 focus:ring-border/60'
+                  )}
+                />
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );
