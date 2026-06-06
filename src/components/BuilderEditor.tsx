@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import "@/src/blocks/registerBlocks";
 import { getBlock } from "@/src/blocks/registry";
 import { useEditorStore, setStorageKey } from "@/src/store/editor";
@@ -68,6 +68,7 @@ export default function BuilderEditor({
   const storePage = useEditorStore((state) => state.page);
   const updateBlock = useEditorStore((state) => state.updateBlock);
   const addBlockAt = useEditorStore((state) => state.addBlockAt);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const page = storePage ?? initialPage;
   const blocks = page.blocks ?? [];
@@ -76,6 +77,20 @@ export default function BuilderEditor({
     () => blocks.find((block) => block.type === "paragraph"),
     [blocks],
   );
+
+  const paragraphText =
+    firstParagraphBlock &&
+    typeof (firstParagraphBlock.data as { text?: unknown }).text === "string"
+      ? ((firstParagraphBlock.data as ParagraphData).text ?? "")
+      : "";
+
+  const resizeTextarea = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
 
   useEffect(() => {
     setStorageKey(storageKey);
@@ -126,17 +141,17 @@ export default function BuilderEditor({
     );
   }, [firstParagraphBlock, allowedBlocks, addBlockAt, blocks.length]);
 
-  const paragraphText =
-    firstParagraphBlock &&
-    typeof (firstParagraphBlock.data as { text?: unknown }).text === "string"
-      ? ((firstParagraphBlock.data as ParagraphData).text ?? "")
-      : "";
+  useEffect(() => {
+    resizeTextarea();
+  }, [paragraphText]);
 
   return (
     <main className="min-h-screen w-full bg-background">
       <div className="flex min-h-screen w-full items-start justify-center px-6 py-24">
         <textarea
+          ref={textareaRef}
           value={paragraphText}
+          rows={1}
           onChange={(event) => {
             if (!firstParagraphBlock) return;
 
@@ -144,9 +159,12 @@ export default function BuilderEditor({
               ...(firstParagraphBlock.data as Record<string, unknown>),
               text: event.target.value,
             });
+
+            event.currentTarget.style.height = "auto";
+            event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
           }}
           placeholder="شروع به نوشتن کنید..."
-          className="min-h-80 w-[600px] max-w-full resize-none rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
+          className="min-h-24 w-[600px] max-w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
         />
       </div>
     </main>
