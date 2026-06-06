@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "@/src/blocks/registerBlocks";
 import { getBlock } from "@/src/blocks/registry";
 import { useEditorStore, setStorageKey } from "@/src/store/editor";
@@ -12,6 +12,17 @@ import type {
   ContentStatus,
   ContentType,
 } from "@/src/types/blocks";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 const isValidContentType = (value: unknown): value is ContentType =>
   value === "blogPost";
@@ -77,6 +88,10 @@ export default function BuilderEditor({
   const pendingFocusBlockId = useRef<string | null>(null);
   const focusSelectedBlockOnNextRender = useRef(false);
   const pendingCaretPosition = useRef<number | null>(null);
+  const [slashMenu, setSlashMenu] = useState<{
+    blockId: string;
+    index: number;
+  } | null>(null);
 
   const page = storePage ?? initialPage;
   const blocks = page.blocks ?? [];
@@ -182,7 +197,7 @@ export default function BuilderEditor({
     pendingCaretPosition.current = null;
   }, [paragraphBlocks, selectedBlockId]);
 
-  return (
+    return (
     <main className="min-h-screen w-full bg-background">
       <div className="flex min-h-screen w-full items-start justify-center px-6 py-24">
         <div className="flex w-[800px] max-w-full flex-col gap-3">
@@ -217,57 +232,103 @@ export default function BuilderEditor({
             const text = getParagraphText(block);
 
             return (
-              <textarea
-                key={block.id}
-                ref={(node) => {
-                  textareaRefs.current[block.id] = node;
-                  resizeTextarea(node);
-                }}
-                value={text}
-                rows={1}
-                onChange={(event) => {
-                  updateBlock(block.id, {
-                    ...(block.data as Record<string, unknown>),
-                    text: event.target.value,
-                  });
+              <div key={block.id} className="relative">
+                <textarea
+                  ref={(node) => {
+                    textareaRefs.current[block.id] = node;
+                    resizeTextarea(node);
+                  }}
+                  value={text}
+                  rows={1}
+                  onChange={(event) => {
+                    updateBlock(block.id, {
+                      ...(block.data as Record<string, unknown>),
+                      text: event.target.value,
+                    });
 
-                  resizeTextarea(event.currentTarget);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-
-                    const currentIndex = blocks.findIndex(
-                      (candidate) => candidate.id === block.id,
-                    );
-
-                    if (currentIndex < 0) return;
-
-                    createEmptyParagraph(currentIndex + 1);
-                    return;
-                  }
-
-                  if (
-                    event.key === "Backspace" &&
-                    text === "" &&
-                    paragraphBlocks.length > 1
-                  ) {
-                    event.preventDefault();
-
-                    const previousParagraph = paragraphBlocks[index - 1];
-
-                    if (previousParagraph) {
-                      pendingFocusBlockId.current = previousParagraph.id;
-                      pendingCaretPosition.current =
-                        getParagraphText(previousParagraph).length;
+                    resizeTextarea(event.currentTarget);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && slashMenu) {
+                      event.preventDefault();
+                      setSlashMenu(null);
+                      return;
                     }
 
-                    deleteBlock(block.id);
-                  }
-                }}
-                placeholder={index === 0 ? "شروع به نوشتن کنید..." : ""}
-                className="min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
-              />
+                    if (event.key === "/") {
+                      event.preventDefault();
+
+                      setSlashMenu({
+                        blockId: block.id,
+                        index,
+                      });
+
+                      return;
+                    }
+
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+
+                      const currentIndex = blocks.findIndex(
+                        (candidate) => candidate.id === block.id,
+                      );
+
+                      if (currentIndex < 0) return;
+
+                      createEmptyParagraph(currentIndex + 1);
+                      setSlashMenu(null);
+                      return;
+                    }
+
+                    if (
+                      event.key === "Backspace" &&
+                      text === "" &&
+                      paragraphBlocks.length > 1
+                    ) {
+                      event.preventDefault();
+
+                      const previousParagraph = paragraphBlocks[index - 1];
+
+                      if (previousParagraph) {
+                        pendingFocusBlockId.current = previousParagraph.id;
+                        pendingCaretPosition.current =
+                          getParagraphText(previousParagraph).length;
+                      }
+
+                      setSlashMenu(null);
+                      deleteBlock(block.id);
+                    }
+                  }}
+                  placeholder={index === 0 ? "شروع به نوشتن کنید..." : ""}
+                  className="min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
+                />
+
+                {slashMenu?.blockId === block.id && (
+                  <div className="absolute right-3 top-full z-10 mt-2 w-56">
+                    <Command className="rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+                      <CommandList>
+                        <CommandGroup>
+                          <CommandItem
+                            value="paragraph"
+                            onSelect={() => {
+                              const currentIndex = blocks.findIndex(
+                                (candidate) => candidate.id === block.id,
+                              );
+
+                              if (currentIndex < 0) return;
+
+                              createEmptyParagraph(currentIndex + 1);
+                              setSlashMenu(null);
+                            }}
+                          >
+                            پاراگراف
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
