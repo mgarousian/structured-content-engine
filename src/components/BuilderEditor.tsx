@@ -18,6 +18,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
+const DEFAULT_IMAGE_SRC =
+  "https://placehold.co/1200x675/e5e7eb/6b7280?text=Blog+Image";
+
 const isValidContentType = (value: unknown): value is ContentType =>
   value === "blogPost";
 
@@ -58,11 +61,18 @@ const isValidContentDocument = (
   });
 };
 
-type EditableTextBlockType = "paragraph" | "heading";
+type TextBlockType = "paragraph" | "heading";
+type WritingBlockType = TextBlockType | "image";
 
 type TextBlockData = {
   text?: string;
   level?: number;
+};
+
+type ImageBlockData = {
+  src?: string;
+  alt?: string;
+  caption?: string;
 };
 
 type SlashMenuState = {
@@ -71,13 +81,11 @@ type SlashMenuState = {
   selectedIndex: number;
 } | null;
 
-const editableTextBlockTypes: EditableTextBlockType[] = [
-  "paragraph",
-  "heading",
-];
+const textBlockTypes: TextBlockType[] = ["paragraph", "heading"];
+const writingBlockTypes: WritingBlockType[] = ["paragraph", "heading", "image"];
 
 const slashMenuOptions: Array<{
-  type: EditableTextBlockType;
+  type: WritingBlockType;
   label: string;
 }> = [
   {
@@ -88,12 +96,22 @@ const slashMenuOptions: Array<{
     type: "heading",
     label: "عنوان",
   },
+  {
+    type: "image",
+    label: "تصویر",
+  },
 ];
 
-const isEditableTextBlock = (
+const isTextBlock = (
   block: BlockInstance,
-): block is BlockInstance & { type: EditableTextBlockType } => {
-  return editableTextBlockTypes.includes(block.type as EditableTextBlockType);
+): block is BlockInstance & { type: TextBlockType } => {
+  return textBlockTypes.includes(block.type as TextBlockType);
+};
+
+const isWritingBlock = (
+  block: BlockInstance,
+): block is BlockInstance & { type: WritingBlockType } => {
+  return writingBlockTypes.includes(block.type as WritingBlockType);
 };
 
 export default function BuilderEditor({
@@ -122,8 +140,8 @@ export default function BuilderEditor({
   const page = storePage ?? initialPage;
   const blocks = page.blocks ?? [];
 
-  const editableBlocks = useMemo(
-    () => blocks.filter(isEditableTextBlock),
+  const writingBlocks = useMemo(
+    () => blocks.filter(isWritingBlock),
     [blocks],
   );
 
@@ -132,6 +150,16 @@ export default function BuilderEditor({
       ? ((block.data as TextBlockData).text ?? "")
       : "";
 
+  const getImageSrc = (block: BlockInstance) => {
+    const src = (block.data as ImageBlockData).src;
+
+    if (typeof src === "string" && src.trim() !== "") {
+      return src.trim();
+    }
+
+    return DEFAULT_IMAGE_SRC;
+  };
+
   const resizeTextarea = (textarea: HTMLTextAreaElement | null) => {
     if (!textarea) return;
 
@@ -139,8 +167,8 @@ export default function BuilderEditor({
     textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
-  const createTextBlock = (
-    type: EditableTextBlockType,
+  const createWritingBlock = (
+    type: WritingBlockType,
     insertIndex: number,
   ) => {
     if (!allowedBlocks.includes(type)) return;
@@ -148,28 +176,54 @@ export default function BuilderEditor({
     const blockDefinition = getBlock(type);
     if (!blockDefinition) return;
 
-    focusSelectedBlockOnNextRender.current = true;
-    pendingCaretPosition.current = 0;
+    const defaultData = {
+      ...(blockDefinition.defaultData as Record<string, unknown>),
+    };
 
-    addBlockAt(
-      type,
-      {
-        ...blockDefinition.defaultData,
-        text: "",
-      },
-      insertIndex,
-    );
+    const data =
+      type === "image"
+        ? {
+            ...defaultData,
+            src:
+              typeof defaultData.src === "string" &&
+              defaultData.src.trim() !== ""
+                ? defaultData.src
+                : DEFAULT_IMAGE_SRC,
+            alt:
+              typeof defaultData.alt === "string"
+                ? defaultData.alt
+                : "",
+            caption:
+              typeof defaultData.caption === "string"
+                ? defaultData.caption
+                : "",
+          }
+        : {
+            ...defaultData,
+            text: "",
+          };
+
+    if (textBlockTypes.includes(type as TextBlockType)) {
+      focusSelectedBlockOnNextRender.current = true;
+      pendingCaretPosition.current = 0;
+    } else {
+      focusSelectedBlockOnNextRender.current = false;
+      pendingFocusBlockId.current = null;
+      pendingCaretPosition.current = null;
+    }
+
+    addBlockAt(type, data, insertIndex);
   };
 
-  const focusEditableBlock = (block: BlockInstance | undefined) => {
-    if (!block) return;
+  const focusTextBlock = (block: BlockInstance | undefined) => {
+    if (!block || !isTextBlock(block)) return;
 
     pendingFocusBlockId.current = block.id;
     pendingCaretPosition.current = getTextBlockText(block).length;
   };
 
   const handleSlashSelect = (
-    type: EditableTextBlockType,
+    type: WritingBlockType,
     currentBlock: BlockInstance,
   ) => {
     const currentIndex = blocks.findIndex(
@@ -178,22 +232,24 @@ export default function BuilderEditor({
 
     if (currentIndex < 0) return;
 
-    const currentText = getTextBlockText(currentBlock);
+    const currentText = isTextBlock(currentBlock)
+      ? getTextBlockText(currentBlock)
+      : "";
 
-    if (currentText === "") {
+    if (isTextBlock(currentBlock) && currentText === "") {
       if (currentBlock.type === type) {
         setSlashMenu(null);
-        focusEditableBlock(currentBlock);
+        focusTextBlock(currentBlock);
         return;
       }
 
       deleteBlock(currentBlock.id);
-      createTextBlock(type, currentIndex);
+      createWritingBlock(type, currentIndex);
       setSlashMenu(null);
       return;
     }
 
-    createTextBlock(type, currentIndex + 1);
+    createWritingBlock(type, currentIndex + 1);
     setSlashMenu(null);
   };
 
@@ -230,17 +286,18 @@ export default function BuilderEditor({
   }, [storageKey, initialPage]);
 
   useEffect(() => {
-    if (editableBlocks.length > 0) return;
+    if (writingBlocks.length > 0) return;
     if (!allowedBlocks.includes("paragraph")) return;
 
-    createTextBlock("paragraph", blocks.length);
-  }, [editableBlocks.length, allowedBlocks, blocks.length]);
+    createWritingBlock("paragraph", blocks.length);
+  }, [writingBlocks.length, allowedBlocks, blocks.length]);
 
   useEffect(() => {
-    editableBlocks.forEach((block) => {
+    writingBlocks.forEach((block) => {
+      if (!isTextBlock(block)) return;
       resizeTextarea(textareaRefs.current[block.id]);
     });
-  }, [editableBlocks]);
+  }, [writingBlocks]);
 
   useEffect(() => {
     const targetBlockId = focusSelectedBlockOnNextRender.current
@@ -250,7 +307,13 @@ export default function BuilderEditor({
     if (!targetBlockId) return;
 
     const target = textareaRefs.current[targetBlockId];
-    if (!target) return;
+
+    if (!target) {
+      focusSelectedBlockOnNextRender.current = false;
+      pendingFocusBlockId.current = null;
+      pendingCaretPosition.current = null;
+      return;
+    }
 
     target.focus();
 
@@ -262,7 +325,7 @@ export default function BuilderEditor({
     focusSelectedBlockOnNextRender.current = false;
     pendingFocusBlockId.current = null;
     pendingCaretPosition.current = null;
-  }, [editableBlocks, selectedBlockId]);
+  }, [writingBlocks, selectedBlockId]);
 
   return (
     <main className="min-h-screen w-full bg-background">
@@ -295,7 +358,23 @@ export default function BuilderEditor({
             </span>
           </div>
 
-          {editableBlocks.map((block, index) => {
+          {writingBlocks.map((block, index) => {
+            if (block.type === "image") {
+              return (
+                <figure key={block.id} className="my-6">
+                  <img
+                    src={getImageSrc(block)}
+                    alt={
+                      typeof (block.data as ImageBlockData).alt === "string"
+                        ? ((block.data as ImageBlockData).alt ?? "")
+                        : ""
+                    }
+                    className="h-auto w-full rounded-xl object-cover"
+                  />
+                </figure>
+              );
+            }
+
             const text = getTextBlockText(block);
             const isHeading = block.type === "heading";
             const isSlashMenuOpenForBlock = slashMenu?.blockId === block.id;
@@ -407,7 +486,7 @@ export default function BuilderEditor({
 
                       if (currentIndex < 0) return;
 
-                      createTextBlock("paragraph", currentIndex + 1);
+                      createWritingBlock("paragraph", currentIndex + 1);
                       setSlashMenu(null);
                       return;
                     }
@@ -415,14 +494,17 @@ export default function BuilderEditor({
                     if (
                       event.key === "Backspace" &&
                       text === "" &&
-                      editableBlocks.length > 1
+                      writingBlocks.length > 1
                     ) {
                       event.preventDefault();
 
-                      const previousBlock = editableBlocks[index - 1];
+                      const previousTextBlock = [...writingBlocks]
+                        .slice(0, index)
+                        .reverse()
+                        .find(isTextBlock);
 
-                      if (previousBlock) {
-                        focusEditableBlock(previousBlock);
+                      if (previousTextBlock) {
+                        focusTextBlock(previousTextBlock);
                       }
 
                       setSlashMenu(null);
@@ -444,34 +526,39 @@ export default function BuilderEditor({
                         <CommandGroup>
                           {slashMenuOptions.map((option, optionIndex) => (
                             <button
-  key={option.type}
-  type="button"
-  role="option"
-  aria-selected={slashMenu.selectedIndex === optionIndex}
-  className={
-    slashMenu.selectedIndex === optionIndex
-      ? "flex w-full items-center rounded-sm bg-accent px-2 py-1.5 text-sm text-accent-foreground outline-none"
-      : "flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-  }
-  onMouseEnter={() => {
-    setSlashMenu((currentMenu) => {
-      if (!currentMenu || currentMenu.blockId !== block.id) {
-        return currentMenu;
-      }
+                              key={option.type}
+                              type="button"
+                              role="option"
+                              aria-selected={
+                                slashMenu.selectedIndex === optionIndex
+                              }
+                              className={
+                                slashMenu.selectedIndex === optionIndex
+                                  ? "flex w-full items-center rounded-sm bg-accent px-2 py-1.5 text-sm text-accent-foreground outline-none"
+                                  : "flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                              }
+                              onMouseEnter={() => {
+                                setSlashMenu((currentMenu) => {
+                                  if (
+                                    !currentMenu ||
+                                    currentMenu.blockId !== block.id
+                                  ) {
+                                    return currentMenu;
+                                  }
 
-      return {
-        ...currentMenu,
-        selectedIndex: optionIndex,
-      };
-    });
-  }}
-  onMouseDown={(event) => {
-    event.preventDefault();
-    handleSlashSelect(option.type, block);
-  }}
->
-  {option.label}
-</button>
+                                  return {
+                                    ...currentMenu,
+                                    selectedIndex: optionIndex,
+                                  };
+                                });
+                              }}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                handleSlashSelect(option.type, block);
+                              }}
+                            >
+                              {option.label}
+                            </button>
                           ))}
                         </CommandGroup>
                       </CommandList>
