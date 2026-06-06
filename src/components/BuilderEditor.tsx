@@ -14,15 +14,10 @@ import type {
 } from "@/src/types/blocks";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-} from "@/components/ui/popover";
 
 const isValidContentType = (value: unknown): value is ContentType =>
   value === "blogPost";
@@ -64,8 +59,27 @@ const isValidContentDocument = (
   });
 };
 
-type ParagraphData = {
-  text: string;
+type EditableTextBlockType = "paragraph" | "heading";
+
+type TextBlockData = {
+  text?: string;
+  level?: number;
+};
+
+type SlashMenuState = {
+  blockId: string;
+  index: number;
+} | null;
+
+const editableTextBlockTypes: EditableTextBlockType[] = [
+  "paragraph",
+  "heading",
+];
+
+const isEditableTextBlock = (
+  block: BlockInstance,
+): block is BlockInstance & { type: EditableTextBlockType } => {
+  return editableTextBlockTypes.includes(block.type as EditableTextBlockType);
 };
 
 export default function BuilderEditor({
@@ -88,22 +102,20 @@ export default function BuilderEditor({
   const pendingFocusBlockId = useRef<string | null>(null);
   const focusSelectedBlockOnNextRender = useRef(false);
   const pendingCaretPosition = useRef<number | null>(null);
-  const [slashMenu, setSlashMenu] = useState<{
-    blockId: string;
-    index: number;
-  } | null>(null);
+
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState>(null);
 
   const page = storePage ?? initialPage;
   const blocks = page.blocks ?? [];
 
-  const paragraphBlocks = useMemo(
-    () => blocks.filter((block) => block.type === "paragraph"),
+  const editableBlocks = useMemo(
+    () => blocks.filter(isEditableTextBlock),
     [blocks],
   );
 
-  const getParagraphText = (block: BlockInstance) =>
-    typeof (block.data as { text?: unknown }).text === "string"
-      ? ((block.data as ParagraphData).text ?? "")
+  const getTextBlockText = (block: BlockInstance) =>
+    typeof (block.data as TextBlockData).text === "string"
+      ? ((block.data as TextBlockData).text ?? "")
       : "";
 
   const resizeTextarea = (textarea: HTMLTextAreaElement | null) => {
@@ -113,21 +125,60 @@ export default function BuilderEditor({
     textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
-  const createEmptyParagraph = (insertIndex: number) => {
-    const paragraphDefinition = getBlock("paragraph");
-    if (!paragraphDefinition) return;
+  const createTextBlock = (
+    type: EditableTextBlockType,
+    insertIndex: number,
+  ) => {
+    const blockDefinition = getBlock(type);
+    if (!blockDefinition) return;
 
     focusSelectedBlockOnNextRender.current = true;
     pendingCaretPosition.current = 0;
 
     addBlockAt(
-      "paragraph",
+      type,
       {
-        ...paragraphDefinition.defaultData,
+        ...blockDefinition.defaultData,
         text: "",
       },
       insertIndex,
     );
+  };
+
+  const focusEditableBlock = (block: BlockInstance | undefined) => {
+    if (!block) return;
+
+    pendingFocusBlockId.current = block.id;
+    pendingCaretPosition.current = getTextBlockText(block).length;
+  };
+
+  const handleSlashSelect = (
+    type: EditableTextBlockType,
+    currentBlock: BlockInstance,
+  ) => {
+    const currentIndex = blocks.findIndex(
+      (candidate) => candidate.id === currentBlock.id,
+    );
+
+    if (currentIndex < 0) return;
+
+    const currentText = getTextBlockText(currentBlock);
+
+    if (currentText === "") {
+      if (currentBlock.type === type) {
+        setSlashMenu(null);
+        focusEditableBlock(currentBlock);
+        return;
+      }
+
+      deleteBlock(currentBlock.id);
+      createTextBlock(type, currentIndex);
+      setSlashMenu(null);
+      return;
+    }
+
+    createTextBlock(type, currentIndex + 1);
+    setSlashMenu(null);
   };
 
   useEffect(() => {
@@ -163,17 +214,17 @@ export default function BuilderEditor({
   }, [storageKey, initialPage]);
 
   useEffect(() => {
-    if (paragraphBlocks.length > 0) return;
+    if (editableBlocks.length > 0) return;
     if (!allowedBlocks.includes("paragraph")) return;
 
-    createEmptyParagraph(blocks.length);
-  }, [paragraphBlocks.length, allowedBlocks, blocks.length]);
+    createTextBlock("paragraph", blocks.length);
+  }, [editableBlocks.length, allowedBlocks, blocks.length]);
 
   useEffect(() => {
-    paragraphBlocks.forEach((block) => {
+    editableBlocks.forEach((block) => {
       resizeTextarea(textareaRefs.current[block.id]);
     });
-  }, [paragraphBlocks]);
+  }, [editableBlocks]);
 
   useEffect(() => {
     const targetBlockId = focusSelectedBlockOnNextRender.current
@@ -195,9 +246,9 @@ export default function BuilderEditor({
     focusSelectedBlockOnNextRender.current = false;
     pendingFocusBlockId.current = null;
     pendingCaretPosition.current = null;
-  }, [paragraphBlocks, selectedBlockId]);
+  }, [editableBlocks, selectedBlockId]);
 
-    return (
+  return (
     <main className="min-h-screen w-full bg-background">
       <div className="flex min-h-screen w-full items-start justify-center px-6 py-24">
         <div className="flex w-[800px] max-w-full flex-col gap-3">
@@ -228,8 +279,9 @@ export default function BuilderEditor({
             </span>
           </div>
 
-          {paragraphBlocks.map((block, index) => {
-            const text = getParagraphText(block);
+          {editableBlocks.map((block, index) => {
+            const text = getTextBlockText(block);
+            const isHeading = block.type === "heading";
 
             return (
               <div key={block.id} className="relative">
@@ -275,7 +327,7 @@ export default function BuilderEditor({
 
                       if (currentIndex < 0) return;
 
-                      createEmptyParagraph(currentIndex + 1);
+                      createTextBlock("paragraph", currentIndex + 1);
                       setSlashMenu(null);
                       return;
                     }
@@ -283,16 +335,14 @@ export default function BuilderEditor({
                     if (
                       event.key === "Backspace" &&
                       text === "" &&
-                      paragraphBlocks.length > 1
+                      editableBlocks.length > 1
                     ) {
                       event.preventDefault();
 
-                      const previousParagraph = paragraphBlocks[index - 1];
+                      const previousBlock = editableBlocks[index - 1];
 
-                      if (previousParagraph) {
-                        pendingFocusBlockId.current = previousParagraph.id;
-                        pendingCaretPosition.current =
-                          getParagraphText(previousParagraph).length;
+                      if (previousBlock) {
+                        focusEditableBlock(previousBlock);
                       }
 
                       setSlashMenu(null);
@@ -300,7 +350,11 @@ export default function BuilderEditor({
                     }
                   }}
                   placeholder={index === 0 ? "شروع به نوشتن کنید..." : ""}
-                  className="min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
+                  className={
+                    isHeading
+                      ? "min-h-12 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-3xl font-bold leading-tight text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
+                      : "min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
+                  }
                 />
 
                 {slashMenu?.blockId === block.id && (
@@ -311,17 +365,19 @@ export default function BuilderEditor({
                           <CommandItem
                             value="paragraph"
                             onSelect={() => {
-                              const currentIndex = blocks.findIndex(
-                                (candidate) => candidate.id === block.id,
-                              );
-
-                              if (currentIndex < 0) return;
-
-                              createEmptyParagraph(currentIndex + 1);
-                              setSlashMenu(null);
+                              handleSlashSelect("paragraph", block);
                             }}
                           >
                             پاراگراف
+                          </CommandItem>
+
+                          <CommandItem
+                            value="heading"
+                            onSelect={() => {
+                              handleSlashSelect("heading", block);
+                            }}
+                          >
+                            عنوان
                           </CommandItem>
                         </CommandGroup>
                       </CommandList>
