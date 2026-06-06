@@ -15,7 +15,6 @@ import type {
 import {
   Command,
   CommandGroup,
-  CommandItem,
   CommandList,
 } from "@/components/ui/command";
 
@@ -69,11 +68,26 @@ type TextBlockData = {
 type SlashMenuState = {
   blockId: string;
   index: number;
+  selectedIndex: number;
 } | null;
 
 const editableTextBlockTypes: EditableTextBlockType[] = [
   "paragraph",
   "heading",
+];
+
+const slashMenuOptions: Array<{
+  type: EditableTextBlockType;
+  label: string;
+}> = [
+  {
+    type: "paragraph",
+    label: "پاراگراف",
+  },
+  {
+    type: "heading",
+    label: "عنوان",
+  },
 ];
 
 const isEditableTextBlock = (
@@ -129,6 +143,8 @@ export default function BuilderEditor({
     type: EditableTextBlockType,
     insertIndex: number,
   ) => {
+    if (!allowedBlocks.includes(type)) return;
+
     const blockDefinition = getBlock(type);
     if (!blockDefinition) return;
 
@@ -282,6 +298,7 @@ export default function BuilderEditor({
           {editableBlocks.map((block, index) => {
             const text = getTextBlockText(block);
             const isHeading = block.type === "heading";
+            const isSlashMenuOpenForBlock = slashMenu?.blockId === block.id;
 
             return (
               <div key={block.id} className="relative">
@@ -301,9 +318,71 @@ export default function BuilderEditor({
                     resizeTextarea(event.currentTarget);
                   }}
                   onKeyDown={(event) => {
-                    if (event.key === "Escape" && slashMenu) {
+                    if (event.key === "Escape" && isSlashMenuOpenForBlock) {
                       event.preventDefault();
                       setSlashMenu(null);
+                      return;
+                    }
+
+                    if (
+                      isSlashMenuOpenForBlock &&
+                      event.key === "ArrowDown"
+                    ) {
+                      event.preventDefault();
+
+                      setSlashMenu((currentMenu) => {
+                        if (
+                          !currentMenu ||
+                          currentMenu.blockId !== block.id
+                        ) {
+                          return currentMenu;
+                        }
+
+                        return {
+                          ...currentMenu,
+                          selectedIndex:
+                            (currentMenu.selectedIndex + 1) %
+                            slashMenuOptions.length,
+                        };
+                      });
+
+                      return;
+                    }
+
+                    if (isSlashMenuOpenForBlock && event.key === "ArrowUp") {
+                      event.preventDefault();
+
+                      setSlashMenu((currentMenu) => {
+                        if (
+                          !currentMenu ||
+                          currentMenu.blockId !== block.id
+                        ) {
+                          return currentMenu;
+                        }
+
+                        return {
+                          ...currentMenu,
+                          selectedIndex:
+                            (currentMenu.selectedIndex -
+                              1 +
+                              slashMenuOptions.length) %
+                            slashMenuOptions.length,
+                        };
+                      });
+
+                      return;
+                    }
+
+                    if (isSlashMenuOpenForBlock && event.key === "Enter") {
+                      event.preventDefault();
+
+                      const selectedOption =
+                        slashMenuOptions[slashMenu.selectedIndex];
+
+                      if (selectedOption) {
+                        handleSlashSelect(selectedOption.type, block);
+                      }
+
                       return;
                     }
 
@@ -313,6 +392,7 @@ export default function BuilderEditor({
                       setSlashMenu({
                         blockId: block.id,
                         index,
+                        selectedIndex: 0,
                       });
 
                       return;
@@ -357,28 +437,42 @@ export default function BuilderEditor({
                   }
                 />
 
-                {slashMenu?.blockId === block.id && (
+                {isSlashMenuOpenForBlock && (
                   <div className="absolute right-3 top-full z-10 mt-2 w-56">
                     <Command className="rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                       <CommandList>
                         <CommandGroup>
-                          <CommandItem
-                            value="paragraph"
-                            onSelect={() => {
-                              handleSlashSelect("paragraph", block);
-                            }}
-                          >
-                            پاراگراف
-                          </CommandItem>
+                          {slashMenuOptions.map((option, optionIndex) => (
+                            <button
+  key={option.type}
+  type="button"
+  role="option"
+  aria-selected={slashMenu.selectedIndex === optionIndex}
+  className={
+    slashMenu.selectedIndex === optionIndex
+      ? "flex w-full items-center rounded-sm bg-accent px-2 py-1.5 text-sm text-accent-foreground outline-none"
+      : "flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+  }
+  onMouseEnter={() => {
+    setSlashMenu((currentMenu) => {
+      if (!currentMenu || currentMenu.blockId !== block.id) {
+        return currentMenu;
+      }
 
-                          <CommandItem
-                            value="heading"
-                            onSelect={() => {
-                              handleSlashSelect("heading", block);
-                            }}
-                          >
-                            عنوان
-                          </CommandItem>
+      return {
+        ...currentMenu,
+        selectedIndex: optionIndex,
+      };
+    });
+  }}
+  onMouseDown={(event) => {
+    event.preventDefault();
+    handleSlashSelect(option.type, block);
+  }}
+>
+  {option.label}
+</button>
+                          ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>
