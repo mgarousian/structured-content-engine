@@ -51,13 +51,10 @@ export default function Page() {
     <div className="flex flex-1 flex-col gap-6">
       <AdminPageHeader
         title="مدیریت پست‌های بلاگ"
-        description="لیست اسناد بلاگ را در اینجا مدیریت کنید."
+        // description="لیست اسناد بلاگ را در اینجا مدیریت کنید."
         actions={
           <>
-            <Button asChild variant="outline">
-              <Link href="/admin">بازگشت به پنل مدیریت</Link>
-            </Button>
-            <Button onClick={handleCreate}>ساخت پست جدید</Button>
+            <Button size="lg" onClick={handleCreate}>ساخت پست جدید</Button>
           </>
         }
       />
