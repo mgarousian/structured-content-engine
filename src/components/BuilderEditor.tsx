@@ -61,7 +61,13 @@ const isValidContentDocument = (
   });
 };
 
-type TextBlockType = "paragraph" | "heading";
+type TextBlockType =
+  | "paragraph"
+  | "heading" // legacy
+  | "heading-one"
+  | "heading-two"
+  | "heading-three";
+
 type WritingBlockType = TextBlockType | "image";
 
 type TextBlockData = {
@@ -81,27 +87,48 @@ type SlashMenuState = {
   selectedIndex: number;
 } | null;
 
-const textBlockTypes: TextBlockType[] = ["paragraph", "heading"];
-const writingBlockTypes: WritingBlockType[] = ["paragraph", "heading", "image"];
+const textBlockTypes: TextBlockType[] = [
+  "paragraph",
+  "heading", // legacy; for existing content
+  "heading-one",
+  "heading-two",
+  "heading-three",
+];
+
+const writingBlockTypes: WritingBlockType[] = [
+  "paragraph",
+  "heading", // legacy; for existing content
+  "heading-one",
+  "heading-two",
+  "heading-three",
+  "image",
+];
 
 const slashMenuOptions: Array<{
   type: WritingBlockType;
   label: string;
 }> = [
   {
-    type: "paragraph",
-    label: "پاراگراف",
+    type: "heading-one",
+    label: "H1",
   },
   {
-    type: "heading",
-    label: "عنوان",
+    type: "heading-two",
+    label: "H2",
+  },
+  {
+    type: "heading-three",
+    label: "H3",
+  },
+  {
+    type: "paragraph",
+    label: "پاراگراف",
   },
   {
     type: "image",
     label: "تصویر",
   },
 ];
-
 const isTextBlock = (
   block: BlockInstance,
 ): block is BlockInstance & { type: TextBlockType } => {
@@ -114,14 +141,42 @@ const isWritingBlock = (
   return writingBlockTypes.includes(block.type as WritingBlockType);
 };
 
+const paragraphTextareaClassName =
+  "min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0";
+
+const headingOneTextareaClassName =
+  "min-h-14 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-5xl font-bold leading-tight text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0";
+
+const headingTwoTextareaClassName =
+  "min-h-12 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-4xl font-bold leading-tight text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0";
+
+const headingThreeTextareaClassName =
+  "min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-3xl font-semibold leading-tight text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0";
+
+const getTextBlockClassName = (block: BlockInstance) => {
+  if (block.type === "heading-one") return headingOneTextareaClassName;
+  if (block.type === "heading-two") return headingTwoTextareaClassName;
+  if (block.type === "heading-three") return headingThreeTextareaClassName;
+
+  // legacy heading support
+  if (block.type === "heading") {
+    const level = (block.data as { level?: unknown }).level;
+
+    if (level === "h2") return headingTwoTextareaClassName;
+    if (level === "h3") return headingThreeTextareaClassName;
+
+    return headingOneTextareaClassName;
+  }
+
+  return paragraphTextareaClassName;
+};
+
 export default function BuilderEditor({
   storageKey,
   initialPage,
-  allowedBlocks,
 }: {
   storageKey: string;
   initialPage: ContentDocument;
-  allowedBlocks: string[];
 }) {
   const storePage = useEditorStore((state) => state.page);
   const updateBlock = useEditorStore((state) => state.updateBlock);
@@ -171,7 +226,7 @@ export default function BuilderEditor({
     type: WritingBlockType,
     insertIndex: number,
   ) => {
-    if (!allowedBlocks.includes(type)) return;
+
 
     const blockDefinition = getBlock(type);
     if (!blockDefinition) return;
@@ -287,10 +342,9 @@ export default function BuilderEditor({
 
   useEffect(() => {
     if (writingBlocks.length > 0) return;
-    if (!allowedBlocks.includes("paragraph")) return;
 
     createWritingBlock("paragraph", blocks.length);
-  }, [writingBlocks.length, allowedBlocks, blocks.length]);
+  }, [writingBlocks.length, blocks.length]);
 
   useEffect(() => {
     writingBlocks.forEach((block) => {
@@ -376,7 +430,6 @@ export default function BuilderEditor({
             }
 
             const text = getTextBlockText(block);
-            const isHeading = block.type === "heading";
             const isSlashMenuOpenForBlock = slashMenu?.blockId === block.id;
 
             return (
@@ -512,11 +565,7 @@ export default function BuilderEditor({
                     }
                   }}
                   placeholder={index === 0 ? "شروع به نوشتن کنید..." : ""}
-                  className={
-                    isHeading
-                      ? "min-h-12 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-3xl font-bold leading-tight text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
-                      : "min-h-10 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-3 py-2 text-base leading-8 text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
-                  }
+                  className={getTextBlockClassName(block)}
                 />
 
                 {isSlashMenuOpenForBlock && (

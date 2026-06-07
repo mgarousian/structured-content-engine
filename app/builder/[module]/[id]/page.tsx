@@ -29,5 +29,5 @@ export default async function Page({ params }: BuilderPageProps) {
   const initialDocument = config.createDefaultDocument(id);
   const storageKey = `content-engine:doc:${config.moduleKey}:${id}`;
 
-  return <BuilderEditor storageKey={storageKey} initialPage={initialDocument} allowedBlocks={config.allowedBlocks} />;
+  return <BuilderEditor storageKey={storageKey} initialPage={initialDocument} />;
 }
