@@ -1,13 +1,14 @@
 import React from "react";
+import HeadingOneRenderer from "./renderer";
+import HeadingOneEditor from "./editor";
 import { BlockDefinition } from "../../types/blocks";
 import { registerBlock } from "../registry";
-import {
-  HeadingTextData,
-  HeadingTextEditor,
-  HeadingTextRenderer,
-} from "../heading/shared";
 
-const headingOneBlock: BlockDefinition<HeadingTextData> = {
+type HeadingOneData = {
+  text: string;
+};
+
+const headingOneBlock: BlockDefinition<HeadingOneData> = {
   type: "heading-one",
   label: "H1",
   persianLabel: "عنوان ۱",
@@ -17,10 +18,8 @@ const headingOneBlock: BlockDefinition<HeadingTextData> = {
   defaultData: {
     text: "",
   },
-  renderer: (data) => (
-    <HeadingTextRenderer data={data as HeadingTextData} tag="h1" />
-  ),
-  editor: (props) => <HeadingTextEditor {...(props as any)} />,
+  renderer: (data) => <HeadingOneRenderer data={data as HeadingOneData} />,
+  editor: (props) => <HeadingOneEditor {...(props as any)} />,
 };
 
 registerBlock(headingOneBlock);

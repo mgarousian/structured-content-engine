@@ -12,11 +12,9 @@ import type {
   ContentStatus,
   ContentType,
 } from "@/src/types/blocks";
-import {
-  Command,
-  CommandGroup,
-  CommandList,
-} from "@/components/ui/command";
+import SlashBlockMenu, {
+  type SlashBlockMenuOption,
+} from "./SlashBlockMenu";
 
 const DEFAULT_IMAGE_SRC =
   "https://placehold.co/1200x675/e5e7eb/6b7280?text=Blog+Image";
@@ -104,10 +102,7 @@ const writingBlockTypes: WritingBlockType[] = [
   "image",
 ];
 
-const slashMenuOptions: Array<{
-  type: WritingBlockType;
-  label: string;
-}> = [
+const slashMenuOptions: SlashBlockMenuOption<WritingBlockType>[] = [
   {
     type: "heading-one",
     label: "H1",
@@ -123,6 +118,7 @@ const slashMenuOptions: Array<{
   {
     type: "paragraph",
     label: "پاراگراف",
+    separatorBefore: true,
   },
   {
     type: "image",
@@ -569,51 +565,28 @@ export default function BuilderEditor({
                 />
 
                 {isSlashMenuOpenForBlock && (
-                  <div className="absolute right-3 top-full z-10 mt-2 w-56">
-                    <Command className="rounded-md border border-border bg-popover text-popover-foreground shadow-md">
-                      <CommandList>
-                        <CommandGroup>
-                          {slashMenuOptions.map((option, optionIndex) => (
-                            <button
-                              key={option.type}
-                              type="button"
-                              role="option"
-                              aria-selected={
-                                slashMenu.selectedIndex === optionIndex
-                              }
-                              className={
-                                slashMenu.selectedIndex === optionIndex
-                                  ? "flex w-full items-center rounded-sm bg-accent px-2 py-1.5 text-sm text-accent-foreground outline-none"
-                                  : "flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                              }
-                              onMouseEnter={() => {
-                                setSlashMenu((currentMenu) => {
-                                  if (
-                                    !currentMenu ||
-                                    currentMenu.blockId !== block.id
-                                  ) {
-                                    return currentMenu;
-                                  }
+  <div className="absolute right-3 top-full z-10 mt-2 w-56">
+    <SlashBlockMenu
+      options={slashMenuOptions}
+      selectedIndex={slashMenu.selectedIndex}
+      onSelectedIndexChange={(optionIndex) => {
+        setSlashMenu((currentMenu) => {
+          if (!currentMenu || currentMenu.blockId !== block.id) {
+            return currentMenu;
+          }
 
-                                  return {
-                                    ...currentMenu,
-                                    selectedIndex: optionIndex,
-                                  };
-                                });
-                              }}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                handleSlashSelect(option.type, block);
-                              }}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
+          return {
+            ...currentMenu,
+            selectedIndex: optionIndex,
+          };
+        });
+      }}
+      onSelect={(option) => {
+        handleSlashSelect(option.type, block);
+      }}
+    />
+  </div>
+)}
               </div>
             );
           })}
