@@ -179,9 +179,11 @@ export default function BuilderEditor({
   const addBlockAt = useEditorStore((state) => state.addBlockAt);
   const deleteBlock = useEditorStore((state) => state.deleteBlock);
   const selectedBlockId = useEditorStore((state) => state.selectedBlockId);
+  const selectBlock = useEditorStore((state) => state.selectBlock);
   const setPageMetadata = useEditorStore((state) => state.setPageMetadata);
 
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const imageBlockRefs = useRef<Record<string, HTMLElement | null>>({});
   const pendingFocusBlockId = useRef<string | null>(null);
   const focusSelectedBlockOnNextRender = useRef(false);
   const pendingCaretPosition = useRef<number | null>(null);
@@ -291,6 +293,28 @@ export default function BuilderEditor({
     requestAnimationFrame(() => {
       textarea.focus();
       textarea.setSelectionRange(nextPosition, nextPosition);
+    });
+  };
+
+  const focusWritingBlock = (
+    block: BlockInstance | undefined,
+    textPosition: number,
+  ) => {
+    if (!block) return;
+
+    if (isTextBlock(block)) {
+      focusTextBlockAtPosition(block, textPosition);
+      return;
+    }
+
+    const imageBlock = imageBlockRefs.current[block.id];
+
+    if (!imageBlock) return;
+
+    selectBlock(block.id);
+
+    requestAnimationFrame(() => {
+      imageBlock.focus();
     });
   };
 
@@ -432,7 +456,55 @@ export default function BuilderEditor({
           {writingBlocks.map((block, index) => {
             if (block.type === "image") {
               return (
-                <figure key={block.id} className="my-6">
+                <figure
+                  key={block.id}
+                  ref={(node) => {
+                    imageBlockRefs.current[block.id] = node;
+                  }}
+                  tabIndex={-1}
+                  onFocus={() => {
+                    selectBlock(block.id);
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      event.shiftKey ||
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.altKey
+                    ) {
+                      return;
+                    }
+
+                    if (event.key === "ArrowUp") {
+                      const previousBlock = writingBlocks[index - 1];
+
+                      if (!previousBlock) return;
+
+                      event.preventDefault();
+                      focusWritingBlock(
+                        previousBlock,
+                        isTextBlock(previousBlock)
+                          ? getTextBlockText(previousBlock).length
+                          : 0,
+                      );
+                      return;
+                    }
+
+                    if (event.key === "ArrowDown") {
+                      const nextBlock = writingBlocks[index + 1];
+
+                      if (!nextBlock) return;
+
+                      event.preventDefault();
+                      focusWritingBlock(nextBlock, 0);
+                    }
+                  }}
+                  className={
+                    selectedBlockId === block.id
+                      ? "my-6 rounded-xl ring-2 ring-ring ring-offset-2"
+                      : "my-6"
+                  }
+                >
                   <img
                     src={getImageSrc(block)}
                     alt={
@@ -455,6 +527,9 @@ export default function BuilderEditor({
                   ref={(node) => {
                     textareaRefs.current[block.id] = node;
                     resizeTextarea(node);
+                  }}
+                  onFocus={() => {
+                    selectBlock(block.id);
                   }}
                   value={text}
                   rows={1}
@@ -544,17 +619,16 @@ export default function BuilderEditor({
                       event.key === "ArrowUp" &&
                       event.currentTarget.selectionStart === 0
                     ) {
-                      const previousTextBlock = [...writingBlocks]
-                        .slice(0, index)
-                        .reverse()
-                        .find(isTextBlock);
+                      const previousBlock = writingBlocks[index - 1];
 
-                      if (!previousTextBlock) return;
+                      if (!previousBlock) return;
 
                       event.preventDefault();
-                      focusTextBlockAtPosition(
-                        previousTextBlock,
-                        getTextBlockText(previousTextBlock).length,
+                      focusWritingBlock(
+                        previousBlock,
+                        isTextBlock(previousBlock)
+                          ? getTextBlockText(previousBlock).length
+                          : 0,
                       );
                       return;
                     }
@@ -566,16 +640,15 @@ export default function BuilderEditor({
                       !event.ctrlKey &&
                       !event.altKey &&
                       event.key === "ArrowDown" &&
-                      event.currentTarget.selectionEnd === text.length
+                      event.currentTarget.selectionEnd ===
+                        event.currentTarget.value.length
                     ) {
-                      const nextTextBlock = writingBlocks
-                        .slice(index + 1)
-                        .find(isTextBlock);
+                      const nextBlock = writingBlocks[index + 1];
 
-                      if (!nextTextBlock) return;
+                      if (!nextBlock) return;
 
                       event.preventDefault();
-                      focusTextBlockAtPosition(nextTextBlock, 0);
+                      focusWritingBlock(nextBlock, 0);
                       return;
                     }
 
