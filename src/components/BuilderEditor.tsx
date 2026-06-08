@@ -260,7 +260,7 @@ export default function BuilderEditor({
       focusSelectedBlockOnNextRender.current = true;
       pendingCaretPosition.current = 0;
     } else {
-      focusSelectedBlockOnNextRender.current = false;
+      focusSelectedBlockOnNextRender.current = true;
       pendingFocusBlockId.current = null;
       pendingCaretPosition.current = null;
     }
@@ -316,6 +316,31 @@ export default function BuilderEditor({
     requestAnimationFrame(() => {
       imageBlock.focus();
     });
+  };
+
+  const focusAdjacentBlockAfterDelete = (removedBlockId: string) => {
+    const removedBlockIndex = writingBlocks.findIndex(
+      (candidate) => candidate.id === removedBlockId,
+    );
+
+    if (removedBlockIndex < 0) return;
+
+    const previousBlock = writingBlocks[removedBlockIndex - 1];
+    const nextBlock = writingBlocks[removedBlockIndex + 1];
+
+    if (previousBlock) {
+      focusWritingBlock(
+        previousBlock,
+        isTextBlock(previousBlock)
+          ? getTextBlockText(previousBlock).length
+          : 0,
+      );
+      return;
+    }
+
+    if (nextBlock) {
+      focusWritingBlock(nextBlock, 0);
+    }
   };
 
   const handleSlashSelect = (
@@ -402,19 +427,24 @@ export default function BuilderEditor({
     if (!targetBlockId) return;
 
     const target = textareaRefs.current[targetBlockId];
+    const imageTarget = imageBlockRefs.current[targetBlockId];
 
-    if (!target) {
+    if (!target && !imageTarget) {
       focusSelectedBlockOnNextRender.current = false;
       pendingFocusBlockId.current = null;
       pendingCaretPosition.current = null;
       return;
     }
 
-    target.focus();
+    if (target) {
+      target.focus();
 
-    const position = pendingCaretPosition.current;
-    if (typeof position === "number") {
-      target.setSelectionRange(position, position);
+      const position = pendingCaretPosition.current;
+      if (typeof position === "number") {
+        target.setSelectionRange(position, position);
+      }
+    } else if (imageTarget) {
+      imageTarget.focus();
     }
 
     focusSelectedBlockOnNextRender.current = false;
@@ -497,6 +527,13 @@ export default function BuilderEditor({
 
                       event.preventDefault();
                       focusWritingBlock(nextBlock, 0);
+                      return;
+                    }
+
+                    if (event.key === "Backspace") {
+                      event.preventDefault();
+                      focusAdjacentBlockAfterDelete(block.id);
+                      deleteBlock(block.id);
                     }
                   }}
                   className={
@@ -685,13 +722,18 @@ export default function BuilderEditor({
                     ) {
                       event.preventDefault();
 
-                      const previousTextBlock = [...writingBlocks]
-                        .slice(0, index)
-                        .reverse()
-                        .find(isTextBlock);
+                      const previousBlock = writingBlocks[index - 1];
+                      const nextBlock = writingBlocks[index + 1];
 
-                      if (previousTextBlock) {
-                        focusTextBlock(previousTextBlock);
+                      if (previousBlock) {
+                        focusWritingBlock(
+                          previousBlock,
+                          isTextBlock(previousBlock)
+                            ? getTextBlockText(previousBlock).length
+                            : 0,
+                        );
+                      } else if (nextBlock) {
+                        focusWritingBlock(nextBlock, 0);
                       }
 
                       setSlashMenu(null);
