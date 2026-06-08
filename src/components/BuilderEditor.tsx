@@ -273,6 +273,27 @@ export default function BuilderEditor({
     pendingCaretPosition.current = getTextBlockText(block).length;
   };
 
+  const focusTextBlockAtPosition = (
+    block: BlockInstance | undefined,
+    position: number,
+  ) => {
+    if (!block || !isTextBlock(block)) return;
+
+    const textarea = textareaRefs.current[block.id];
+    const textLength = textarea?.value.length ?? getTextBlockText(block).length;
+    const nextPosition = Math.max(0, Math.min(position, textLength));
+
+    pendingFocusBlockId.current = block.id;
+    pendingCaretPosition.current = nextPosition;
+
+    if (!textarea) return;
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextPosition, nextPosition);
+    });
+  };
+
   const handleSlashSelect = (
     type: WritingBlockType,
     currentBlock: BlockInstance,
@@ -511,6 +532,50 @@ export default function BuilderEditor({
                         handleSlashSelect(selectedOption.type, block);
                       }
 
+                      return;
+                    }
+
+                    if (
+                      !isSlashMenuOpenForBlock &&
+                      !event.shiftKey &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.altKey &&
+                      event.key === "ArrowUp" &&
+                      event.currentTarget.selectionStart === 0
+                    ) {
+                      const previousTextBlock = [...writingBlocks]
+                        .slice(0, index)
+                        .reverse()
+                        .find(isTextBlock);
+
+                      if (!previousTextBlock) return;
+
+                      event.preventDefault();
+                      focusTextBlockAtPosition(
+                        previousTextBlock,
+                        getTextBlockText(previousTextBlock).length,
+                      );
+                      return;
+                    }
+
+                    if (
+                      !isSlashMenuOpenForBlock &&
+                      !event.shiftKey &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.altKey &&
+                      event.key === "ArrowDown" &&
+                      event.currentTarget.selectionEnd === text.length
+                    ) {
+                      const nextTextBlock = writingBlocks
+                        .slice(index + 1)
+                        .find(isTextBlock);
+
+                      if (!nextTextBlock) return;
+
+                      event.preventDefault();
+                      focusTextBlockAtPosition(nextTextBlock, 0);
                       return;
                     }
 
