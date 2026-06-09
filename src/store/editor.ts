@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { getDocumentByKey, saveDocumentByKey } from '../core/storage/documentStorage';
 import { getBlogDocument, saveBlogDocument } from '../modules/blog/api/client';
-import { ContentDocument, ContentType, ContentStatus, BlockInstance } from '../types/blocks';
+import { ContentDocument, ContentType, ContentStatus, BlockInstance, ContentSeo } from '../types/blocks';
 
 let STORAGE_KEY = 'structured-content-engine:doc:blog';
 
@@ -24,6 +24,7 @@ type EditorStore = {
     title?: string;
     slug?: string;
     excerpt?: string;
+    seo?: ContentSeo;
     status?: ContentStatus;
     publishedAt?: string | null;
   }) => void;
@@ -197,6 +198,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
         title: metadata.title ?? state.page.title,
         slug: metadata.slug ?? state.page.slug,
         excerpt: metadata.excerpt ?? state.page.excerpt,
+        seo: metadata.seo ?? state.page.seo,
         status: metadata.status ?? state.page.status,
         publishedAt:
           metadata.publishedAt !== undefined

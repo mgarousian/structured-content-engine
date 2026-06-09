@@ -777,6 +777,7 @@ export default function BuilderEditor({
             slug={page.slug}
             status={page.status}
             publishedAt={page.publishedAt}
+            seo={page.seo}
             onSlugChange={(slug) => {
               setPageMetadata({ slug });
             }}
@@ -785,6 +786,9 @@ export default function BuilderEditor({
             }}
             onPublishedAtChange={(publishedAt) => {
               setPageMetadata({ publishedAt });
+            }}
+            onSeoChange={(seo) => {
+              setPageMetadata({ seo });
             }}
           />
         </div>

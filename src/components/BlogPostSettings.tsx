@@ -5,16 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import type { ContentStatus } from "@/src/types/blocks";
+import { Textarea } from "@/components/ui/textarea";
+import type { ContentSeo, ContentStatus } from "@/src/types/blocks";
 
 type BlogPostSettingsProps = {
   documentId: string;
   slug: string;
   status: ContentStatus;
   publishedAt?: string;
+  seo?: ContentSeo;
   onSlugChange: (value: string) => void;
   onStatusChange: (value: ContentStatus) => void;
   onPublishedAtChange: (value: string | null) => void;
+  onSeoChange: (value: ContentSeo) => void;
 };
 
 const supportedStatuses: ContentStatus[] = ["draft", "published"];
@@ -70,9 +73,11 @@ export default function BlogPostSettings({
   slug,
   status,
   publishedAt,
+  seo,
   onSlugChange,
   onStatusChange,
   onPublishedAtChange,
+  onSeoChange,
 }: BlogPostSettingsProps) {
   const previewHref = `/page/blog/${documentId}`;
   const publicHref = slug ? `/blog/${slug}` : null;
@@ -82,6 +87,9 @@ export default function BlogPostSettings({
   const hasValidPublishedAt = publishedAt
     ? !Number.isNaN(new Date(publishedAt).getTime())
     : false;
+  const seoTitle = seo?.title ?? "";
+  const seoDescription = seo?.description ?? "";
+  const seoImage = seo?.image ?? "";
 
   return (
     <section className="mt-12 rounded-xl border border-border/60 bg-card/40 p-6">
@@ -207,6 +215,81 @@ export default function BlogPostSettings({
               ? "برای ویرایش تاریخ انتشار از فیلد بالا استفاده کنید."
               : "اگر برای پیش‌نویس تاریخ انتشار لازم نیست، این فیلد را خالی بگذارید."}
           </p>
+        </div>
+
+        <div className="grid gap-4 rounded-lg border border-border/60 bg-muted/30 p-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-foreground">سئو</h3>
+            <p className="text-xs text-muted-foreground">
+              در صورت نیاز، عنوان و توضیحات جداگانه برای موتورهای جست‌وجو تنظیم کنید.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="blog-post-seo-title"
+              className="text-sm font-medium text-foreground"
+            >
+              عنوان سئو
+            </label>
+            <Input
+              id="blog-post-seo-title"
+              value={seoTitle}
+              onChange={(event) =>
+                onSeoChange({
+                  ...seo,
+                  title: event.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              اگر خالی باشد، از عنوان نوشته استفاده می‌شود.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="blog-post-seo-description"
+              className="text-sm font-medium text-foreground"
+            >
+              توضیحات سئو
+            </label>
+            <Textarea
+              id="blog-post-seo-description"
+              value={seoDescription}
+              rows={3}
+              onChange={(event) =>
+                onSeoChange({
+                  ...seo,
+                  description: event.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              اگر خالی باشد، از توضیح کوتاه نوشته استفاده می‌شود.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="blog-post-seo-image"
+              className="text-sm font-medium text-foreground"
+            >
+              تصویر اشتراک‌گذاری / OG
+            </label>
+            <Input
+              id="blog-post-seo-image"
+              value={seoImage}
+              onChange={(event) =>
+                onSeoChange({
+                  ...seo,
+                  image: event.target.value,
+                })
+              }
+              placeholder="https://example.com/og-image.jpg"
+              dir="ltr"
+            />
+          </div>
         </div>
       </div>
     </section>

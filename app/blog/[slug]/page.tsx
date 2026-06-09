@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,41 @@ type PageProps = {
     slug: string;
   }>;
 };
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPublishedBlogDocumentBySlug(slug);
+
+  if (!post) {
+    return {
+      title: 'Blog',
+      description: '',
+    };
+  }
+
+  const title = post.seo?.title || post.title;
+  const description = post.seo?.description || post.excerpt || '';
+  const image = post.seo?.image?.trim();
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      ...(image ? { images: [image] } : {}),
+    },
+    twitter: {
+      card: image ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
 
 const fallbackAuthorName = 'مسعود گاروسیان';
 
