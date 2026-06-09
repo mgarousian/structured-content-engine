@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import "@/src/blocks/registerBlocks";
 import { getBlock } from "@/src/blocks/registry";
 import { useEditorStore, setStorageKey } from "@/src/store/editor";
@@ -397,6 +399,12 @@ export default function BuilderEditor({
     <main className="min-h-screen w-full bg-background">
       <div className="flex min-h-screen w-full items-start justify-center px-6 py-24">
         <div className="flex w-[800px] max-w-full flex-col gap-3">
+          <div className="mb-4 flex justify-start">
+            <Button asChild variant="outline">
+              <Link href="/admin/blog">بازگشت به لیست نوشته‌ها</Link>
+            </Button>
+          </div>
+
           <BlogEditorHeader
             title={page.title}
             excerpt={page.excerpt}
@@ -721,6 +729,12 @@ export default function BuilderEditor({
               setPageMetadata({ seo });
             }}
           />
+
+          <div className="mt-4 flex justify-start">
+            <Button asChild variant="outline">
+              <Link href="/admin/blog">بازگشت به لیست نوشته‌ها</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </main>
