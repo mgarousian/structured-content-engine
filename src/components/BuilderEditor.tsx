@@ -12,6 +12,7 @@ import type {
   ContentStatus,
   ContentType,
 } from "@/src/types/blocks";
+import BlogEditorHeader from "./BlogEditorHeader";
 import BlogPostSettings from "./BlogPostSettings";
 import SlashBlockMenu, {
   type SlashBlockMenuOption,
@@ -457,26 +458,16 @@ export default function BuilderEditor({
     <main className="min-h-screen w-full bg-background">
       <div className="flex min-h-screen w-full items-start justify-center px-6 py-24">
         <div className="flex w-[800px] max-w-full flex-col gap-3">
-          <header className="mb-8 space-y-3">
-            <input
-              value={page.title}
-              onChange={(event) => {
-                setPageMetadata({ title: event.target.value });
-              }}
-              placeholder="عنوان پست"
-              className="w-full rounded-md border border-transparent bg-transparent px-3 py-2 text-4xl font-bold leading-tight text-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
-            />
-
-            <textarea
-              value={page.excerpt ?? ""}
-              rows={2}
-              onChange={(event) => {
-                setPageMetadata({ excerpt: event.target.value });
-              }}
-              placeholder="متن توضیحی کوتاه برای این پست..."
-              className="w-full resize-none rounded-md border border-transparent bg-transparent px-3 py-2 text-lg leading-8 text-muted-foreground shadow-none outline-none transition-colors placeholder:text-muted-foreground hover:border-border focus:border-border focus-visible:ring-0"
-            />
-          </header>
+          <BlogEditorHeader
+            title={page.title}
+            excerpt={page.excerpt}
+            onTitleChange={(title) => {
+              setPageMetadata({ title });
+            }}
+            onExcerptChange={(excerpt) => {
+              setPageMetadata({ excerpt });
+            }}
+          />
 
           <div className="mb-8 flex justify-center" aria-hidden="true">
             <span className="text-xl leading-none tracking-widest text-muted-foreground/60">
