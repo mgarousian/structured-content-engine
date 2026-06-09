@@ -1,3 +1,6 @@
+import "./heading-one";
+import "./heading-two";
+import "./heading-three";
 import './heading';
 import './paragraph';
 import './image';

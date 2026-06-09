@@ -23,12 +23,19 @@ export interface BlockInstance<Data = any> {
 export type ContentType = 'blogPost';
 export type ContentStatus = 'draft' | 'review' | 'scheduled' | 'published';
 
+export interface ContentSeo {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
 export interface ContentDocument {
   id: string;
   contentType: ContentType;
   title: string;
   slug: string;
   excerpt?: string;
+  seo?: ContentSeo;
   status: ContentStatus;
   publishedAt?: string;
   blocks: BlockInstance[];

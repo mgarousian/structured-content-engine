@@ -1,303 +1,742 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import '@/src/blocks/registerBlocks';
-import { getBlock, listBlocks } from '@/src/blocks/registry';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useEditorStore, setStorageKey } from '@/src/store/editor';
-import { getDocumentByKey } from '@/src/core/storage/documentStorage';
-import { getModuleConfig } from '@/src/modules/registry';
-import { getBlogDocument } from '@/src/modules/blog/api/client';
-import BlogMetadataEditor from './BlogMetadataEditor';
-import type { BlockInstance, ContentDocument, ContentType, ContentStatus } from '@/src/types/blocks';
 
-const isValidContentType = (value: any): value is ContentType => value === 'blogPost';
-const isValidContentStatus = (value: any): value is ContentStatus => ['draft', 'review', 'scheduled', 'published'].includes(value);
+import Link from "next/link";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import "@/src/blocks/registerBlocks";
+import { getBlock } from "@/src/blocks/registry";
+import { useEditorStore, setStorageKey } from "@/src/store/editor";
+import { getDocumentByKey } from "@/src/core/storage/documentStorage";
+import { getBlogDocument } from "@/src/modules/blog/api/client";
+import type {
+  BlockInstance,
+  ContentDocument,
+  ContentStatus,
+  ContentType,
+} from "@/src/types/blocks";
+import BlogEditorHeader from "./BlogEditorHeader";
+import BlogPostSettings from "./BlogPostSettings";
+import {
+  DEFAULT_IMAGE_SRC,
+  getTextBlockClassName,
+  isTextBlock,
+  isWritingBlock,
+  textBlockTypes,
+  type TextBlockType,
+  type WritingBlockType,
+} from "./blogEditorUtils";
+import SlashBlockMenu, {
+  type SlashBlockMenuOption,
+} from "./SlashBlockMenu";
 
-const isValidContentDocument = (page: any, expectedContentType: string): page is ContentDocument => {
-  if (!page || typeof page !== 'object') return false;
-  if (typeof page.id !== 'string' || typeof page.slug !== 'string' || typeof page.title !== 'string') return false;
-  if (!isValidContentType(page.contentType)) return false;
-  if (page.contentType !== expectedContentType) return false;
-  if (!isValidContentStatus(page.status)) return false;
-  if (!Array.isArray(page.blocks)) return false;
-  return page.blocks.every((block: any) => {
+const isValidContentType = (value: unknown): value is ContentType =>
+  value === "blogPost";
+
+const isValidContentStatus = (value: unknown): value is ContentStatus =>
+  ["draft", "review", "scheduled", "published"].includes(String(value));
+
+const isValidContentDocument = (
+  page: unknown,
+  expectedContentType: string,
+): page is ContentDocument => {
+  if (!page || typeof page !== "object") return false;
+
+  const candidate = page as Partial<ContentDocument>;
+
+  if (
+    typeof candidate.id !== "string" ||
+    typeof candidate.slug !== "string" ||
+    typeof candidate.title !== "string"
+  ) {
+    return false;
+  }
+
+  if (!isValidContentType(candidate.contentType)) return false;
+  if (candidate.contentType !== expectedContentType) return false;
+  if (!isValidContentStatus(candidate.status)) return false;
+  if (!Array.isArray(candidate.blocks)) return false;
+
+  return candidate.blocks.every((block) => {
     return (
       block &&
-      typeof block === 'object' &&
-      typeof block.id === 'string' &&
-      typeof block.type === 'string' &&
-      typeof block.data === 'object' &&
+      typeof block === "object" &&
+      typeof block.id === "string" &&
+      typeof block.type === "string" &&
+      typeof block.data === "object" &&
       block.data !== null &&
       Boolean(getBlock(block.type))
     );
   });
 };
 
+type TextBlockData = {
+  text?: string;
+  level?: number;
+};
+
+type ImageBlockData = {
+  src?: string;
+  alt?: string;
+  caption?: string;
+};
+
+type SlashMenuState = {
+  blockId: string;
+  index: number;
+  selectedIndex: number;
+} | null;
+
+const slashMenuOptions: SlashBlockMenuOption<WritingBlockType>[] = [
+  {
+    type: "heading-one",
+    label: "H1",
+  },
+  {
+    type: "heading-two",
+    label: "H2",
+  },
+  {
+    type: "heading-three",
+    label: "H3",
+  },
+  {
+    type: "paragraph",
+    label: "پاراگراف",
+    separatorBefore: true,
+  },
+  {
+    type: "image",
+    label: "تصویر",
+  },
+];
+
 export default function BuilderEditor({
   storageKey,
   initialPage,
-  allowedBlocks,
 }: {
   storageKey: string;
   initialPage: ContentDocument;
-  allowedBlocks: string[];
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pendingInsertIndex, setPendingInsertIndex] = useState(0);
-  const [mounted, setMounted] = useState(false);
-  const storePage = useEditorStore((s) => s.page);
-  const page = mounted ? storePage : initialPage;
-  const blocks = page?.blocks ?? [];
-  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
-  const selectBlock = useEditorStore((s) => s.selectBlock);
-  const updateBlock = useEditorStore((s) => s.updateBlock);
-  const addBlockAt = useEditorStore((s) => s.addBlockAt);
-  const deleteBlock = useEditorStore((s) => s.deleteBlock);
-  const moveBlockUp = useEditorStore((s) => s.moveBlockUp);
-  const moveBlockDown = useEditorStore((s) => s.moveBlockDown);
-  const setPageMetadata = useEditorStore((s) => s.setPageMetadata);
+  const storePage = useEditorStore((state) => state.page);
+  const updateBlock = useEditorStore((state) => state.updateBlock);
+  const addBlockAt = useEditorStore((state) => state.addBlockAt);
+  const deleteBlock = useEditorStore((state) => state.deleteBlock);
+  const selectedBlockId = useEditorStore((state) => state.selectedBlockId);
+  const selectBlock = useEditorStore((state) => state.selectBlock);
+  const setPageMetadata = useEditorStore((state) => state.setPageMetadata);
 
-  const availableBlocks = listBlocks().filter((block) => allowedBlocks.includes(block.type));
+  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const imageBlockRefs = useRef<Record<string, HTMLElement | null>>({});
+  const pendingFocusBlockId = useRef<string | null>(null);
+  const focusSelectedBlockOnNextRender = useRef(false);
+  const pendingCaretPosition = useRef<number | null>(null);
+
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState>(null);
+
+  const page = storePage ?? initialPage;
+  const blocks = page.blocks ?? [];
+
+  const writingBlocks = useMemo(
+    () => blocks.filter(isWritingBlock),
+    [blocks],
+  );
+
+  const getTextBlockText = (block: BlockInstance) =>
+    typeof (block.data as TextBlockData).text === "string"
+      ? ((block.data as TextBlockData).text ?? "")
+      : "";
+
+  const getImageSrc = (block: BlockInstance) => {
+    const src = (block.data as ImageBlockData).src;
+
+    if (typeof src === "string" && src.trim() !== "") {
+      return src.trim();
+    }
+
+    return DEFAULT_IMAGE_SRC;
+  };
+
+  const resizeTextarea = (textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
+
+  const createWritingBlock = (
+    type: WritingBlockType,
+    insertIndex: number,
+  ) => {
+
+
+    const blockDefinition = getBlock(type);
+    if (!blockDefinition) return;
+
+    const defaultData = {
+      ...(blockDefinition.defaultData as Record<string, unknown>),
+    };
+
+    const data =
+      type === "image"
+        ? {
+            ...defaultData,
+            src:
+              typeof defaultData.src === "string" &&
+              defaultData.src.trim() !== ""
+                ? defaultData.src
+                : DEFAULT_IMAGE_SRC,
+            alt:
+              typeof defaultData.alt === "string"
+                ? defaultData.alt
+                : "",
+            caption:
+              typeof defaultData.caption === "string"
+                ? defaultData.caption
+                : "",
+          }
+        : {
+            ...defaultData,
+            text: "",
+          };
+
+    if (textBlockTypes.includes(type as TextBlockType)) {
+      focusSelectedBlockOnNextRender.current = true;
+      pendingCaretPosition.current = 0;
+    } else {
+      focusSelectedBlockOnNextRender.current = true;
+      pendingFocusBlockId.current = null;
+      pendingCaretPosition.current = null;
+    }
+
+    addBlockAt(type, data, insertIndex);
+  };
+
+  const focusTextBlock = (block: BlockInstance | undefined) => {
+    if (!block || !isTextBlock(block)) return;
+
+    pendingFocusBlockId.current = block.id;
+    pendingCaretPosition.current = getTextBlockText(block).length;
+  };
+
+  const focusTextBlockAtPosition = (
+    block: BlockInstance | undefined,
+    position: number,
+  ) => {
+    if (!block || !isTextBlock(block)) return;
+
+    const textarea = textareaRefs.current[block.id];
+    const textLength = textarea?.value.length ?? getTextBlockText(block).length;
+    const nextPosition = Math.max(0, Math.min(position, textLength));
+
+    pendingFocusBlockId.current = block.id;
+    pendingCaretPosition.current = nextPosition;
+
+    if (!textarea) return;
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextPosition, nextPosition);
+    });
+  };
+
+  const focusWritingBlock = (
+    block: BlockInstance | undefined,
+    textPosition: number,
+  ) => {
+    if (!block) return;
+
+    if (isTextBlock(block)) {
+      focusTextBlockAtPosition(block, textPosition);
+      return;
+    }
+
+    const imageBlock = imageBlockRefs.current[block.id];
+
+    if (!imageBlock) return;
+
+    selectBlock(block.id);
+
+    requestAnimationFrame(() => {
+      imageBlock.focus();
+    });
+  };
+
+  const focusAdjacentBlockAfterDelete = (removedBlockId: string) => {
+    const removedBlockIndex = writingBlocks.findIndex(
+      (candidate) => candidate.id === removedBlockId,
+    );
+
+    if (removedBlockIndex < 0) return;
+
+    const previousBlock = writingBlocks[removedBlockIndex - 1];
+    const nextBlock = writingBlocks[removedBlockIndex + 1];
+
+    if (previousBlock) {
+      focusWritingBlock(
+        previousBlock,
+        isTextBlock(previousBlock)
+          ? getTextBlockText(previousBlock).length
+          : 0,
+      );
+      return;
+    }
+
+    if (nextBlock) {
+      focusWritingBlock(nextBlock, 0);
+    }
+  };
+
+  const handleSlashSelect = (
+    type: WritingBlockType,
+    currentBlock: BlockInstance,
+  ) => {
+    const currentIndex = blocks.findIndex(
+      (candidate) => candidate.id === currentBlock.id,
+    );
+
+    if (currentIndex < 0) return;
+
+    const currentText = isTextBlock(currentBlock)
+      ? getTextBlockText(currentBlock)
+      : "";
+
+    if (isTextBlock(currentBlock) && currentText === "") {
+      if (currentBlock.type === type) {
+        setSlashMenu(null);
+        focusTextBlock(currentBlock);
+        return;
+      }
+
+      deleteBlock(currentBlock.id);
+      createWritingBlock(type, currentIndex);
+      setSlashMenu(null);
+      return;
+    }
+
+    createWritingBlock(type, currentIndex + 1);
+    setSlashMenu(null);
+  };
 
   useEffect(() => {
-    setMounted(true);
     setStorageKey(storageKey);
 
     const parsedKey = /^content-engine:doc:([^:]+):([^:]+)$/.exec(storageKey);
-    if (parsedKey?.[1] === 'blog') {
+
+    if (parsedKey?.[1] === "blog") {
       void getBlogDocument(parsedKey[2]).then((storedDocument) => {
-        if (storedDocument && isValidContentDocument(storedDocument, initialPage.contentType)) {
+        if (
+          storedDocument &&
+          isValidContentDocument(storedDocument, initialPage.contentType)
+        ) {
           useEditorStore.getState().setPage(storedDocument);
         } else {
           useEditorStore.getState().setPage(initialPage);
         }
       });
+
       return;
     }
 
     const storedDocument = getDocumentByKey(storageKey);
-    if (storedDocument && isValidContentDocument(storedDocument, initialPage.contentType)) {
+
+    if (
+      storedDocument &&
+      isValidContentDocument(storedDocument, initialPage.contentType)
+    ) {
       useEditorStore.getState().setPage(storedDocument);
     } else {
       useEditorStore.getState().setPage(initialPage);
     }
   }, [storageKey, initialPage]);
 
-  const openPickerForIndex = (index: number) => {
-    setPendingInsertIndex(index);
-    setPickerOpen(true);
-  };
+  useEffect(() => {
+    if (writingBlocks.length > 0) return;
 
-  const handleAddBlock = (type: string) => {
-    const def = getBlock(type);
-    if (!def) return;
-    addBlockAt(type, def.defaultData, pendingInsertIndex);
-    setPickerOpen(false);
-  };
+    createWritingBlock("paragraph", blocks.length);
+  }, [writingBlocks.length, blocks.length]);
 
-  const moduleConfig = getModuleConfig(page.contentType);
-  const previewHref = `/page/${moduleConfig.moduleKey}/${page.id}`;
-  const publishedHref =
-    moduleConfig.moduleKey === 'blog' && page.status === 'published' && page.slug
-      ? `/blog/${page.slug}`
-      : null;
+  useEffect(() => {
+    writingBlocks.forEach((block) => {
+      if (!isTextBlock(block)) return;
+      resizeTextarea(textareaRefs.current[block.id]);
+    });
+  }, [writingBlocks]);
+
+  useEffect(() => {
+    const targetBlockId = focusSelectedBlockOnNextRender.current
+      ? selectedBlockId
+      : pendingFocusBlockId.current;
+
+    if (!targetBlockId) return;
+
+    const target = textareaRefs.current[targetBlockId];
+    const imageTarget = imageBlockRefs.current[targetBlockId];
+
+    if (!target && !imageTarget) {
+      focusSelectedBlockOnNextRender.current = false;
+      pendingFocusBlockId.current = null;
+      pendingCaretPosition.current = null;
+      return;
+    }
+
+    if (target) {
+      target.focus();
+
+      const position = pendingCaretPosition.current;
+      if (typeof position === "number") {
+        target.setSelectionRange(position, position);
+      }
+    } else if (imageTarget) {
+      imageTarget.focus();
+    }
+
+    focusSelectedBlockOnNextRender.current = false;
+    pendingFocusBlockId.current = null;
+    pendingCaretPosition.current = null;
+  }, [writingBlocks, selectedBlockId]);
 
   return (
-    <div dir="rtl" style={{ direction: 'rtl', textAlign: 'right', padding: 24 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-        <Link href={moduleConfig.adminPath}>
-          <Button variant="outline">بازگشت به لیست</Button>
-        </Link>
-        <Link href={previewHref}>
-          <Button variant="outline">مشاهده پیش‌نمایش</Button>
-        </Link>
-        {publishedHref ? (
-          <Link href={publishedHref}>
-            <Button variant="outline">مشاهده صفحه منتشرشده</Button>
-          </Link>
-        ) : moduleConfig.moduleKey === 'blog' ? (
-          <Button variant="outline" disabled>برای مشاهده عمومی، ابتدا پست را منتشر کنید</Button>
-        ) : null}
-      </div>
-
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent>
-          <DialogTitle>افزودن بلاک جدید</DialogTitle>
-          <DialogDescription>یک نوع بلاک را انتخاب کنید تا به صفحه اضافه شود.</DialogDescription>
-          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
-            {availableBlocks.map((block) => (
-              <Button
-                key={block.type}
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() => handleAddBlock(block.type)}
-              >
-                {block.label}
-                <span style={{ opacity: 0.7 }}>{block.type}</span>
-              </Button>
-            ))}
+    <main className="min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full items-start justify-center px-6 py-24">
+        <div className="flex w-[800px] max-w-full flex-col gap-3">
+          <div className="mb-4 flex justify-start">
+            <Button asChild variant="outline">
+              <Link href="/admin/blog">بازگشت به لیست نوشته‌ها</Link>
+            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      <div style={{ display: 'flex', gap: 20 }}>
-        <div style={{ flex: 1 }}>
-          {blocks.length === 0 ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 240,
-                padding: 24,
-                border: '1px solid #eee',
-                borderRadius: 8,
-                color: '#555',
-              }}
-            >
-              <div style={{ marginBottom: 16 }}>صفحه خالی است</div>
-              <Button variant="outline" onClick={() => openPickerForIndex(0)}>
-                + افزودن اولین بلوک
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div style={{ marginBottom: 12 }}>
-                <Button
-                  variant="outline"
-                  className="w-full justify-center"
-                  onClick={() => openPickerForIndex(0)}
+          <BlogEditorHeader
+            title={page.title}
+            excerpt={page.excerpt}
+            onTitleChange={(title) => {
+              setPageMetadata({ title });
+            }}
+            onExcerptChange={(excerpt) => {
+              setPageMetadata({ excerpt });
+            }}
+          />
+
+          <div className="mb-8 flex justify-center" aria-hidden="true">
+            <span className="text-xl leading-none tracking-widest text-muted-foreground/60">
+              ...
+            </span>
+          </div>
+
+          {writingBlocks.map((block, index) => {
+            if (block.type === "image") {
+              return (
+                <figure
+                  key={block.id}
+                  ref={(node) => {
+                    imageBlockRefs.current[block.id] = node;
+                  }}
+                  tabIndex={-1}
+                  onFocus={() => {
+                    selectBlock(block.id);
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      event.shiftKey ||
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.altKey
+                    ) {
+                      return;
+                    }
+
+                    if (event.key === "ArrowUp") {
+                      const previousBlock = writingBlocks[index - 1];
+
+                      if (!previousBlock) return;
+
+                      event.preventDefault();
+                      focusWritingBlock(
+                        previousBlock,
+                        isTextBlock(previousBlock)
+                          ? getTextBlockText(previousBlock).length
+                          : 0,
+                      );
+                      return;
+                    }
+
+                    if (event.key === "ArrowDown") {
+                      const nextBlock = writingBlocks[index + 1];
+
+                      if (!nextBlock) return;
+
+                      event.preventDefault();
+                      focusWritingBlock(nextBlock, 0);
+                      return;
+                    }
+
+                    if (event.key === "Backspace") {
+                      event.preventDefault();
+                      focusAdjacentBlockAfterDelete(block.id);
+                      deleteBlock(block.id);
+                    }
+                  }}
+                  className={
+                    selectedBlockId === block.id
+                      ? "my-6 rounded-xl ring-2 ring-ring ring-offset-2"
+                      : "my-6"
+                  }
                 >
-                  + افزودن بلوک
-                </Button>
+                  <img
+                    src={getImageSrc(block)}
+                    alt={
+                      typeof (block.data as ImageBlockData).alt === "string"
+                        ? ((block.data as ImageBlockData).alt ?? "")
+                        : ""
+                    }
+                    className="h-auto w-full rounded-xl object-cover"
+                  />
+                </figure>
+              );
+            }
+
+            const text = getTextBlockText(block);
+            const isSlashMenuOpenForBlock = slashMenu?.blockId === block.id;
+
+            return (
+              <div key={block.id} className="relative">
+                <textarea
+                  ref={(node) => {
+                    textareaRefs.current[block.id] = node;
+                    resizeTextarea(node);
+                  }}
+                  onFocus={() => {
+                    selectBlock(block.id);
+                  }}
+                  value={text}
+                  rows={1}
+                  onChange={(event) => {
+                    updateBlock(block.id, {
+                      ...(block.data as Record<string, unknown>),
+                      text: event.target.value,
+                    });
+
+                    resizeTextarea(event.currentTarget);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && isSlashMenuOpenForBlock) {
+                      event.preventDefault();
+                      setSlashMenu(null);
+                      return;
+                    }
+
+                    if (
+                      isSlashMenuOpenForBlock &&
+                      event.key === "ArrowDown"
+                    ) {
+                      event.preventDefault();
+
+                      setSlashMenu((currentMenu) => {
+                        if (
+                          !currentMenu ||
+                          currentMenu.blockId !== block.id
+                        ) {
+                          return currentMenu;
+                        }
+
+                        return {
+                          ...currentMenu,
+                          selectedIndex:
+                            (currentMenu.selectedIndex + 1) %
+                            slashMenuOptions.length,
+                        };
+                      });
+
+                      return;
+                    }
+
+                    if (isSlashMenuOpenForBlock && event.key === "ArrowUp") {
+                      event.preventDefault();
+
+                      setSlashMenu((currentMenu) => {
+                        if (
+                          !currentMenu ||
+                          currentMenu.blockId !== block.id
+                        ) {
+                          return currentMenu;
+                        }
+
+                        return {
+                          ...currentMenu,
+                          selectedIndex:
+                            (currentMenu.selectedIndex -
+                              1 +
+                              slashMenuOptions.length) %
+                            slashMenuOptions.length,
+                        };
+                      });
+
+                      return;
+                    }
+
+                    if (isSlashMenuOpenForBlock && event.key === "Enter") {
+                      event.preventDefault();
+
+                      const selectedOption =
+                        slashMenuOptions[slashMenu.selectedIndex];
+
+                      if (selectedOption) {
+                        handleSlashSelect(selectedOption.type, block);
+                      }
+
+                      return;
+                    }
+
+                    if (
+                      !isSlashMenuOpenForBlock &&
+                      !event.shiftKey &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.altKey &&
+                      event.key === "ArrowUp" &&
+                      event.currentTarget.selectionStart === 0
+                    ) {
+                      const previousBlock = writingBlocks[index - 1];
+
+                      if (!previousBlock) return;
+
+                      event.preventDefault();
+                      focusWritingBlock(
+                        previousBlock,
+                        isTextBlock(previousBlock)
+                          ? getTextBlockText(previousBlock).length
+                          : 0,
+                      );
+                      return;
+                    }
+
+                    if (
+                      !isSlashMenuOpenForBlock &&
+                      !event.shiftKey &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.altKey &&
+                      event.key === "ArrowDown" &&
+                      event.currentTarget.selectionEnd ===
+                        event.currentTarget.value.length
+                    ) {
+                      const nextBlock = writingBlocks[index + 1];
+
+                      if (!nextBlock) return;
+
+                      event.preventDefault();
+                      focusWritingBlock(nextBlock, 0);
+                      return;
+                    }
+
+                    if (event.key === "/") {
+                      event.preventDefault();
+
+                      setSlashMenu({
+                        blockId: block.id,
+                        index,
+                        selectedIndex: 0,
+                      });
+
+                      return;
+                    }
+
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+
+                      const currentIndex = blocks.findIndex(
+                        (candidate) => candidate.id === block.id,
+                      );
+
+                      if (currentIndex < 0) return;
+
+                      createWritingBlock("paragraph", currentIndex + 1);
+                      setSlashMenu(null);
+                      return;
+                    }
+
+                    if (
+                      event.key === "Backspace" &&
+                      text === "" &&
+                      writingBlocks.length > 1
+                    ) {
+                      event.preventDefault();
+
+                      const previousBlock = writingBlocks[index - 1];
+                      const nextBlock = writingBlocks[index + 1];
+
+                      if (previousBlock) {
+                        focusWritingBlock(
+                          previousBlock,
+                          isTextBlock(previousBlock)
+                            ? getTextBlockText(previousBlock).length
+                            : 0,
+                        );
+                      } else if (nextBlock) {
+                        focusWritingBlock(nextBlock, 0);
+                      }
+
+                      setSlashMenu(null);
+                      deleteBlock(block.id);
+                    }
+                  }}
+                  placeholder={index === 0 ? "شروع به نوشتن کنید..." : ""}
+                  className={getTextBlockClassName(block)}
+                />
+
+                {isSlashMenuOpenForBlock && (
+  <div className="absolute right-3 top-full z-10 mt-2 w-56">
+    <SlashBlockMenu
+      options={slashMenuOptions}
+      selectedIndex={slashMenu.selectedIndex}
+      onSelectedIndexChange={(optionIndex) => {
+        setSlashMenu((currentMenu) => {
+          if (!currentMenu || currentMenu.blockId !== block.id) {
+            return currentMenu;
+          }
+
+          return {
+            ...currentMenu,
+            selectedIndex: optionIndex,
+          };
+        });
+      }}
+      onSelect={(option) => {
+        handleSlashSelect(option.type, block);
+      }}
+    />
+  </div>
+)}
               </div>
-              {blocks.map((b, idx) => {
-                const def = getBlock(b.type);
-                if (!def || !def.renderer) {
-                  return (
-                    <React.Fragment key={b.id}>
-                      <div style={{ padding: 12, border: '1px solid #eee', marginBottom: 12 }}>
-                        بلاک ناشناخته: {b.type}
-                      </div>
-                      <div style={{ marginBottom: 12 }}>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-center"
-                          onClick={() => openPickerForIndex(idx + 1)}
-                        >
-                          + افزودن بلوک
-                        </Button>
-                      </div>
-                    </React.Fragment>
-                  );
-                }
+            );
+          })}
 
-                return (
-                  <React.Fragment key={b.id}>
-                    <div
-                      onClick={() => selectBlock(b.id)}
-                      style={{
-                        padding: 12,
-                        border: selectedBlockId === b.id ? '2px solid #3b82f6' : '1px solid #eee',
-                        borderRadius: 8,
-                        marginBottom: 12,
-                        cursor: 'pointer',
-                        backgroundColor: '#fff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <strong>{def.label}</strong>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveBlockUp(b.id);
-                            }}
-                            disabled={idx <= 0}
-                          >
-                            بالا
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveBlockDown(b.id);
-                            }}
-                            disabled={idx >= blocks.length - 1}
-                          >
-                            پایین
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              deleteBlock(b.id);
-                            }}
-                          >
-                            حذف
-                          </Button>
-                        </div>
-                      </div>
+          <BlogPostSettings
+            documentId={page.id}
+            slug={page.slug}
+            status={page.status}
+            publishedAt={page.publishedAt}
+            seo={page.seo}
+            onSlugChange={(slug) => {
+              setPageMetadata({ slug });
+            }}
+            onStatusChange={(status) => {
+              setPageMetadata({ status });
+            }}
+            onPublishedAtChange={(publishedAt) => {
+              setPageMetadata({ publishedAt });
+            }}
+            onSeoChange={(seo) => {
+              setPageMetadata({ seo });
+            }}
+          />
 
-                      {def.renderer ? def.renderer(b.data) : null}
-                    </div>
-
-                    <div style={{ marginBottom: 12 }}>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-center"
-                        onClick={() => openPickerForIndex(idx + 1)}
-                      >
-                        + افزودن بلوک
-                      </Button>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </>
-          )}
+          <div className="mt-4 flex justify-start">
+            <Button asChild variant="outline">
+              <Link href="/admin/blog">بازگشت به لیست نوشته‌ها</Link>
+            </Button>
+          </div>
         </div>
-
-        <aside style={{ width: 340, padding: 12, borderRight: '1px solid #eee' }}>
-          {page.contentType === 'blogPost' && (
-            <>
-              <h3 style={{ marginTop: 0, marginBottom: 16 }}>تنظیمات پست</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
-                تغییرات به‌صورت خودکار ذخیره می‌شوند
-              </p>
-              <BlogMetadataEditor
-                title={page.title}
-                slug={page.slug}
-                excerpt={page.excerpt}
-                status={page.status === 'published' ? 'published' : 'draft'}
-                onUpdate={(data) => setPageMetadata(data)}
-              />
-              <div style={{ margin: '20px 0', borderTop: '1px solid #eee' }} />
-            </>
-          )}
-
-          <>
-            <h3 style={{ marginTop: 0 }}>ویرایش بلاک</h3>
-
-            {(() => {
-              const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || null;
-              if (selectedBlock) {
-                const def = getBlock(selectedBlock.type);
-                if (!def || !def.editor) return <div>این بلاک قابلیت ویرایش ندارد.</div>;
-                return def.editor({ data: selectedBlock.data, onChange: (d: any) => updateBlock(selectedBlock.id, d) });
-              }
-              return <div>هیچ بلاکی انتخاب نشده است. روی یک بلاک کلیک کنید.</div>;
-            })()}
-          </>
-        </aside>
       </div>
-    </div>
+    </main>
   );
 }

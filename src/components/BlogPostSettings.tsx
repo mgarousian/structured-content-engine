@@ -1,0 +1,297 @@
+"use client";
+
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import type { ContentSeo, ContentStatus } from "@/src/types/blocks";
+
+type BlogPostSettingsProps = {
+  documentId: string;
+  slug: string;
+  status: ContentStatus;
+  publishedAt?: string;
+  seo?: ContentSeo;
+  onSlugChange: (value: string) => void;
+  onStatusChange: (value: ContentStatus) => void;
+  onPublishedAtChange: (value: string | null) => void;
+  onSeoChange: (value: ContentSeo) => void;
+};
+
+const supportedStatuses: ContentStatus[] = ["draft", "published"];
+
+const statusLabels: Record<ContentStatus, string> = {
+  draft: "پیش‌نویس",
+  review: "Review",
+  scheduled: "Scheduled",
+  published: "منتشرشده",
+};
+
+const toDateTimeLocalValue = (value?: string) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const timezoneOffset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - timezoneOffset * 60_000);
+  return localDate.toISOString().slice(0, 16);
+};
+
+const fromDateTimeLocalValue = (value: string) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString();
+};
+
+const formatPersianPublishedAt = (value?: string) => {
+  if (!value) {
+    return "هنوز تاریخ انتشاری انتخاب نشده است.";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "تاریخ واردشده معتبر نیست.";
+  }
+
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+export default function BlogPostSettings({
+  documentId,
+  slug,
+  status,
+  publishedAt,
+  seo,
+  onSlugChange,
+  onStatusChange,
+  onPublishedAtChange,
+  onSeoChange,
+}: BlogPostSettingsProps) {
+  const previewHref = `/page/blog/${documentId}`;
+  const publicHref = slug ? `/blog/${slug}` : null;
+  const publishedAtValue = toDateTimeLocalValue(publishedAt);
+  const persianPublishedAt = formatPersianPublishedAt(publishedAt);
+  const hasPublishedAt = Boolean(publishedAt);
+  const hasValidPublishedAt = publishedAt
+    ? !Number.isNaN(new Date(publishedAt).getTime())
+    : false;
+  const seoTitle = seo?.title ?? "";
+  const seoDescription = seo?.description ?? "";
+  const seoImage = seo?.image ?? "";
+
+  return (
+    <section className="mt-12 rounded-xl border border-border/60 bg-card/40 p-6">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-foreground">
+            تنظیمات نوشته
+          </h2>
+          <Badge variant="secondary" className="font-normal">
+            Secondary
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          جزئیات انتشار را بدون برهم‌زدن جریان نوشتن مدیریت کنید.
+        </p>
+      </div>
+
+      <Separator className="my-5" />
+
+      <div className="grid gap-5">
+        <div className="grid gap-2">
+          <label
+            htmlFor="blog-post-slug"
+            className="text-sm font-medium text-foreground"
+          >
+            اسلاگ
+          </label>
+          <Input
+            id="blog-post-slug"
+            value={slug}
+            onChange={(event) => onSlugChange(event.target.value)}
+            placeholder="post-slug"
+            dir="ltr"
+            className="font-mono"
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-foreground">
+              پیش‌نمایش
+            </span>
+            <Button asChild variant="outline" className="justify-start">
+              <Link
+                href={previewHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                مشاهده پیش‌نمایش
+              </Link>
+            </Button>
+          </div>
+
+          {status === "published" && publicHref ? (
+            <div className="grid gap-2">
+              <span className="text-sm font-medium text-foreground">
+                لینک عمومی
+              </span>
+              <Button asChild variant="ghost" className="justify-start">
+                <Link
+                  href={publicHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  مشاهده صفحه عمومی
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2">
+          <span className="text-sm font-medium text-foreground">وضعیت</span>
+          <div className="flex flex-wrap gap-2">
+            {supportedStatuses.map((option) => {
+              const isActive = status === option;
+
+              return (
+                <Button
+                  key={option}
+                  type="button"
+                  variant={isActive ? "default" : "outline"}
+                  onClick={() => onStatusChange(option)}
+                >
+                  {statusLabels[option]}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <label
+            htmlFor="blog-post-published-at"
+            className="text-sm font-medium text-foreground"
+          >
+            تاریخ انتشار
+          </label>
+          <Input
+            id="blog-post-published-at"
+            type="datetime-local"
+            value={publishedAtValue}
+            onChange={(event) =>
+              onPublishedAtChange(fromDateTimeLocalValue(event.target.value))
+            }
+          />
+          <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              نمایش شمسی
+            </p>
+            <p
+              className={
+                hasValidPublishedAt
+                  ? "mt-1 text-sm text-foreground"
+                  : "mt-1 text-sm text-muted-foreground"
+              }
+            >
+              {persianPublishedAt}
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {hasPublishedAt
+              ? "برای ویرایش تاریخ انتشار از فیلد بالا استفاده کنید."
+              : "اگر برای پیش‌نویس تاریخ انتشار لازم نیست، این فیلد را خالی بگذارید."}
+          </p>
+        </div>
+
+        <div className="grid gap-4 rounded-lg border border-border/60 bg-muted/30 p-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-foreground">سئو</h3>
+            <p className="text-xs text-muted-foreground">
+              در صورت نیاز، عنوان و توضیحات جداگانه برای موتورهای جست‌وجو تنظیم کنید.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="blog-post-seo-title"
+              className="text-sm font-medium text-foreground"
+            >
+              عنوان سئو
+            </label>
+            <Input
+              id="blog-post-seo-title"
+              value={seoTitle}
+              onChange={(event) =>
+                onSeoChange({
+                  ...seo,
+                  title: event.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              اگر خالی باشد، از عنوان نوشته استفاده می‌شود.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="blog-post-seo-description"
+              className="text-sm font-medium text-foreground"
+            >
+              توضیحات سئو
+            </label>
+            <Textarea
+              id="blog-post-seo-description"
+              value={seoDescription}
+              rows={3}
+              onChange={(event) =>
+                onSeoChange({
+                  ...seo,
+                  description: event.target.value,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              اگر خالی باشد، از توضیح کوتاه نوشته استفاده می‌شود.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="blog-post-seo-image"
+              className="text-sm font-medium text-foreground"
+            >
+              تصویر اشتراک‌گذاری / OG
+            </label>
+            <Input
+              id="blog-post-seo-image"
+              value={seoImage}
+              onChange={(event) =>
+                onSeoChange({
+                  ...seo,
+                  image: event.target.value,
+                })
+              }
+              placeholder="https://example.com/og-image.jpg"
+              dir="ltr"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

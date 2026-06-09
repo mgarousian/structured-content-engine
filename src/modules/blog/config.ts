@@ -9,6 +9,7 @@ const defaultDocument: ContentDocument = {
   title: 'پست نمونه بلاگ',
   slug: 'default-blog-post',
   excerpt: 'خلاصه کوتاه درباره محتوای این پست.',
+  seo: {},
   status: 'draft',
   publishedAt: undefined,
   blocks: [
@@ -26,6 +27,7 @@ const createDefaultDocument = (id: string): ContentDocument => {
     slug,
     title: 'پست جدید',
     excerpt: 'خلاصه این پست را در اینجا بنویسید.',
+    seo: {},
     publishedAt: undefined,
     blocks: defaultDocument.blocks.map((block) => ({
       ...block,

@@ -1,9 +1,9 @@
-import { BlockDefinition, BlockRegistryMap } from '../types/blocks';
+import { BlockDefinition, BlockRegistryMap } from "../types/blocks";
 
 const registry: BlockRegistryMap = {};
 
 export const registerBlock = <T>(def: BlockDefinition<T>) => {
-  if (!def || !def.type) throw new Error('Block definition must have a type');
+  if (!def || !def.type) throw new Error("Block definition must have a type");
   registry[def.type] = def as BlockDefinition<any>;
 };
 
