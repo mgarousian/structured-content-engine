@@ -46,6 +46,25 @@ const fromDateTimeLocalValue = (value: string) => {
   return date.toISOString();
 };
 
+const formatPersianPublishedAt = (value?: string) => {
+  if (!value) {
+    return "هنوز تاریخ انتشاری انتخاب نشده است.";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "تاریخ واردشده معتبر نیست.";
+  }
+
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export default function BlogPostSettings({
   documentId,
   slug,
@@ -58,6 +77,11 @@ export default function BlogPostSettings({
   const previewHref = `/page/blog/${documentId}`;
   const publicHref = slug ? `/blog/${slug}` : null;
   const publishedAtValue = toDateTimeLocalValue(publishedAt);
+  const persianPublishedAt = formatPersianPublishedAt(publishedAt);
+  const hasPublishedAt = Boolean(publishedAt);
+  const hasValidPublishedAt = publishedAt
+    ? !Number.isNaN(new Date(publishedAt).getTime())
+    : false;
 
   return (
     <section className="mt-12 rounded-xl border border-border/60 bg-card/40 p-6">
@@ -164,8 +188,24 @@ export default function BlogPostSettings({
               onPublishedAtChange(fromDateTimeLocalValue(event.target.value))
             }
           />
+          <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              نمایش شمسی
+            </p>
+            <p
+              className={
+                hasValidPublishedAt
+                  ? "mt-1 text-sm text-foreground"
+                  : "mt-1 text-sm text-muted-foreground"
+              }
+            >
+              {persianPublishedAt}
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground">
-            اگر برای پیش‌نویس تاریخ انتشار لازم نیست، این فیلد را خالی بگذارید.
+            {hasPublishedAt
+              ? "برای ویرایش تاریخ انتشار از فیلد بالا استفاده کنید."
+              : "اگر برای پیش‌نویس تاریخ انتشار لازم نیست، این فیلد را خالی بگذارید."}
           </p>
         </div>
       </div>
