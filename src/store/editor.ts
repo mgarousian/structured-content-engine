@@ -25,6 +25,7 @@ type EditorStore = {
     slug?: string;
     excerpt?: string;
     status?: ContentStatus;
+    publishedAt?: string | null;
   }) => void;
 };
 
@@ -197,7 +198,12 @@ export const useEditorStore = create<EditorStore>((set) => ({
         slug: metadata.slug ?? state.page.slug,
         excerpt: metadata.excerpt ?? state.page.excerpt,
         status: metadata.status ?? state.page.status,
-        publishedAt: metadata.status === 'published' ? publishedAt : state.page.publishedAt,
+        publishedAt:
+          metadata.publishedAt !== undefined
+            ? metadata.publishedAt ?? undefined
+            : metadata.status === 'published'
+              ? publishedAt
+              : state.page.publishedAt,
       };
       const storedPage = savePageToStorage(nextPage);
       return { page: storedPage };

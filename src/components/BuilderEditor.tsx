@@ -12,6 +12,7 @@ import type {
   ContentStatus,
   ContentType,
 } from "@/src/types/blocks";
+import BlogPostSettings from "./BlogPostSettings";
 import SlashBlockMenu, {
   type SlashBlockMenuOption,
 } from "./SlashBlockMenu";
@@ -770,6 +771,22 @@ export default function BuilderEditor({
               </div>
             );
           })}
+
+          <BlogPostSettings
+            documentId={page.id}
+            slug={page.slug}
+            status={page.status}
+            publishedAt={page.publishedAt}
+            onSlugChange={(slug) => {
+              setPageMetadata({ slug });
+            }}
+            onStatusChange={(status) => {
+              setPageMetadata({ status });
+            }}
+            onPublishedAtChange={(publishedAt) => {
+              setPageMetadata({ publishedAt });
+            }}
+          />
         </div>
       </div>
     </main>
